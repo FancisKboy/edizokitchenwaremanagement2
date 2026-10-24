@@ -388,7 +388,7 @@ export default function ProductsPage() {
   }
 
   function handleTypeImagePaste(
-    event: ClipboardEvent<HTMLFormElement>,
+    event: ClipboardEvent<HTMLDivElement>,
   ) {
     const items = Array.from(
       event.clipboardData.items || [],
