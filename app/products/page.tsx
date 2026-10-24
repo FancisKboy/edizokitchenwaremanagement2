@@ -369,7 +369,7 @@ export default function ProductsPage() {
   }
 
   function handleTypeImageDrop(
-    event: DragEvent<HTMLDivElement>,
+    event: DragEvent<any>,
   ) {
     event.preventDefault()
     event.stopPropagation()
@@ -388,7 +388,7 @@ export default function ProductsPage() {
   }
 
   function handleTypeImagePaste(
-    event: ClipboardEvent<HTMLDivElement>,
+    event: ClipboardEvent<any>,
   ) {
     const items = Array.from(
       event.clipboardData.items || [],
@@ -3492,8 +3492,7 @@ function Icon({
     case 'plus':
       return (
         <svg {...common}>
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
+          <path d="M12 5v14M5 12h14" />
         </svg>
       )
 
@@ -3534,7 +3533,7 @@ function Icon({
       return (
         <svg {...common}>
           <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
         </svg>
       )
 
@@ -3608,4 +3607,5 @@ function Icon({
     default:
       return null
   }
-} 
+}
+
