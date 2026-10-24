@@ -4,9 +4,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react'
 
 import { supabase } from '@/lib/supabase'
+import { useAppPreferences } from '@/app/providers'
 
 type Sale = {
   id: string
@@ -68,6 +70,98 @@ type ProductTypeReport = {
   revenue: number
   cost: number
   profit: number
+}
+
+/* =========================================================
+   TRANSLATIONS
+========================================================= */
+
+const REPORT_TRANSLATIONS: Record<string, string> = {
+  'Business Intelligence': "Amakuru y'Ubucuruzi",
+  Reports: 'Raporo',
+  "Understand today's sales, profit, payments, debts, and inventory at a glance.":
+    "Sobanukirwa ibigurishwa, inyungu, ubwishyu, amadeni n'ububiko muri iki gihe.",
+  'Live Data': 'Amakuru Ako Kanya',
+  Print: 'Gucapa',
+  'Export CSV': 'Gukuramo CSV',
+  'Kitchenware Management Report': 'Raporo yo Gucunga Ibikoresho',
+  'Report could not be loaded': 'Raporo ntiyabashije gufungurwa',
+  'Report Period': 'Igihe cya Raporo',
+  'Choose the period you want to analyse.':
+    'Hitamo igihe wifuza gusesengura.',
+  Today: 'Uyu munsi',
+  Yesterday: 'Ejo hashize',
+  'This Week': 'Iki cyumweru',
+  'Start Date': 'Itariki yo Gutangira',
+  'End Date': 'Itariki yo Gusoza',
+  Refresh: 'Vugurura',
+  'Building your report...': 'Raporo irimo gutegurwa...',
+  'Loading sales, payments, and inventory.':
+    "Gupakurura ibyagurishijwe, ubwishyu, n'ububiko.",
+  'Financial Overview': "Incamake y'Imari",
+  'Performance for': 'Imikorere ya',
+  'Total Revenue': 'Amafaranga Yinjiye Yose',
+  'Total Cost': 'Igiciro Cyose',
+  'Total Profit': 'Inyungu Yose',
+  'profit margin': "ijanisha ry'inyungu",
+  'Outstanding Debt': 'Amadeni Asigaye',
+  'Business Activity': "Ibikorwa by'Ubucuruzi",
+  'Quick numbers for the selected period.':
+    'Imibare muri make ku gihe wahisemo.',
+  Sales: 'Ibyagurishijwe',
+  'Items Sold': 'Ingano y’Ibyagurishijwe',
+  'Payments Received': 'Amafaranga Yakiriwe',
+  'Average Sale': "Impuzandengo y'Igurisha",
+  'Current Stock': 'Ububiko Buhari',
+  'Current inventory based on remaining quantities and exact batch supply costs.':
+    "Ububiko buhari hashingiwe ku bisigaye n'igiciro cy'amatsinda.",
+  'Units In Stock': 'Ibice Biri mu Bubiko',
+  'Current Stock Value': "Agaciro k'Ububiko Buhari",
+  'Payment Status': "Imiterere y'Ubwishyu",
+  'How sales in this period were paid.':
+    'Uko ibicuruzwa byishyuwe muri iki gihe.',
+  'Paid Sales': 'Ibyishyuwe Byose',
+  'Partial Sales': 'Ibyishyuwe Igice',
+  'Unpaid Sales': 'Ibitishyurwa',
+  'Product Type / Kind Performance': "Imikorere y'Amoko y'Ibicuruzwa",
+  'The strongest product types and kinds during the selected period.':
+    "Amoko y'ibicuruzwa yagurishijwe cyane muri iki gihe.",
+  'No product sales yet': 'Nta bicuruzwa biragurishwa',
+  'There are no product type sales for this period.':
+    'Nta moko y’ibicuruzwa yagurishijwe muri iki gihe.',
+  Product: 'Igicuruzwa',
+  'Product Type / Kind': 'Ubwoko',
+  'Quantity Sold': 'Ingano Yagurishijwe',
+  Revenue: 'Amafaranga Yinjiye',
+  Cost: 'Igiciro',
+  Profit: 'Inyungu',
+  'Sales Report': "Raporo y'Ibyagurishijwe",
+  'sale recorded in this period.': 'yanditswe muri iki gihe.',
+  'sales recorded in this period.': 'zanditswe muri iki gihe.',
+  'No sales found': 'Nta byagurishijwe byabonetse',
+  'No sales were recorded for the selected period.':
+    'Nta byagurishijwe byanditswe mu gihe cyatoranyijwe.',
+  Date: 'Itariki',
+  Paid: 'Yishyuwe',
+  Due: 'Asigaye',
+  Status: 'Imiterere',
+  'Payment Report': "Raporo y'Ubwishyu",
+  'payment recorded in this period.': 'yakiriwe muri iki gihe.',
+  'payments recorded in this period.': 'zakiriwe muri iki gihe.',
+  'No payments found': 'Nta bwishyu bwabonetse',
+  'No payments were recorded for the selected period.':
+    'Nta bwishyu bwanditswe mu gihe cyatoranyijwe.',
+  Amount: 'Amafaranga',
+  Sale: 'Igurisha',
+  Notes: 'Ibisobanuro',
+  'Unknown Product': 'Igicuruzwa kitazwi',
+  'Period:': 'Igihe:',
+  'Generated:': 'Byakozwe:',
+}
+
+function translateReport(text: string, isRw: boolean): string {
+  if (!isRw) return text
+  return REPORT_TRANSLATIONS[text] || text
 }
 
 function getLocalDateString(date = new Date()) {
@@ -144,53 +238,45 @@ function escapeCsv(value: unknown) {
 function getReportPeriodLabel(
   startDate: string,
   endDate: string,
+  isRw: boolean
 ) {
   const today = getToday()
   const yesterday = getYesterday()
   const weekStart = getWeekStart()
 
   if (startDate === today && endDate === today) {
-    return 'Today'
+    return translateReport('Today', isRw)
   }
 
-  if (
-    startDate === yesterday &&
-    endDate === yesterday
-  ) {
-    return 'Yesterday'
+  if (startDate === yesterday && endDate === yesterday) {
+    return translateReport('Yesterday', isRw)
   }
 
-  if (
-    startDate === weekStart &&
-    endDate === today
-  ) {
-    return 'This Week'
+  if (startDate === weekStart && endDate === today) {
+    return translateReport('This Week', isRw)
   }
 
   return `${formatDate(startDate)} – ${formatDate(endDate)}`
 }
 
 export default function ReportsPage() {
+  const { t } = useAppPreferences()
+  const isRw = t('inventory').trim().toLowerCase() !== 'inventory'
+  const tx = (text: string) => translateReport(text, isRw)
+
   const [sales, setSales] = useState<Sale[]>([])
   const [saleItems, setSaleItems] = useState<SaleItem[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  const [productTypes, setProductTypes] = useState<
-    ProductType[]
-  >([])
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   // Default report = TODAY
-  const [startDate, setStartDate] = useState(
-    () => getToday(),
-  )
-
-  const [endDate, setEndDate] = useState(
-    () => getToday(),
-  )
+  const [startDate, setStartDate] = useState(() => getToday())
+  const [endDate, setEndDate] = useState(() => getToday())
 
   async function loadData() {
     try {
@@ -220,9 +306,7 @@ export default function ReportsPage() {
               payment_status
             `,
           )
-          .order('sale_date', {
-            ascending: false,
-          }),
+          .order('sale_date', { ascending: false }),
 
         supabase
           .from('sale_items')
@@ -251,20 +335,13 @@ export default function ReportsPage() {
               notes
             `,
           )
-          .order('payment_date', {
-            ascending: false,
-          }),
+          .order('payment_date', { ascending: false }),
 
-        supabase
-          .from('products')
-          .select('id, name')
-          .order('name'),
+        supabase.from('products').select('id, name').order('name'),
 
         supabase
           .from('product_types')
-          .select(
-            'id, product_id, name, status',
-          )
+          .select('id, product_id, name, status')
           .order('name'),
 
         supabase
@@ -280,63 +357,23 @@ export default function ReportsPage() {
           ),
       ])
 
-      if (salesResult.error) {
-        throw salesResult.error
-      }
+      if (salesResult.error) throw salesResult.error
+      if (saleItemsResult.error) throw saleItemsResult.error
+      if (paymentsResult.error) throw paymentsResult.error
+      if (productsResult.error) throw productsResult.error
+      if (productTypesResult.error) throw productTypesResult.error
+      if (batchesResult.error) throw batchesResult.error
 
-      if (saleItemsResult.error) {
-        throw saleItemsResult.error
-      }
-
-      if (paymentsResult.error) {
-        throw paymentsResult.error
-      }
-
-      if (productsResult.error) {
-        throw productsResult.error
-      }
-
-      if (productTypesResult.error) {
-        throw productTypesResult.error
-      }
-
-      if (batchesResult.error) {
-        throw batchesResult.error
-      }
-
-      setSales(
-        (salesResult.data || []) as Sale[],
-      )
-
-      setSaleItems(
-        (saleItemsResult.data || []) as SaleItem[],
-      )
-
-      setPayments(
-        (paymentsResult.data || []) as Payment[],
-      )
-
-      setProducts(
-        (productsResult.data || []) as Product[],
-      )
-
-      setProductTypes(
-        (productTypesResult.data || []) as ProductType[],
-      )
-
-      setBatches(
-        (batchesResult.data || []) as Batch[],
-      )
+      setSales((salesResult.data || []) as Sale[])
+      setSaleItems((saleItemsResult.data || []) as SaleItem[])
+      setPayments((paymentsResult.data || []) as Payment[])
+      setProducts((productsResult.data || []) as Product[])
+      setProductTypes((productTypesResult.data || []) as ProductType[])
+      setBatches((batchesResult.data || []) as Batch[])
     } catch (err) {
-      console.error(
-        'Reports load error:',
-        err,
-      )
-
+      console.error('Reports load error:', err)
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to load reports.',
+        err instanceof Error ? err.message : 'Failed to load reports.'
       )
     } finally {
       setLoading(false)
@@ -348,310 +385,182 @@ export default function ReportsPage() {
   }, [])
 
   const filteredSales = useMemo(() => {
-    if (!startDate || !endDate) {
-      return sales
-    }
+    if (!startDate || !endDate) return sales
 
-    const start = new Date(
-      getStartOfDay(startDate),
-    ).getTime()
-
-    const end = new Date(
-      getEndOfDay(endDate),
-    ).getTime()
+    const start = new Date(getStartOfDay(startDate)).getTime()
+    const end = new Date(getEndOfDay(endDate)).getTime()
 
     return sales.filter((sale) => {
-      const saleTime = new Date(
-        sale.sale_date,
-      ).getTime()
-
-      return (
-        saleTime >= start &&
-        saleTime <= end
-      )
+      const saleTime = new Date(sale.sale_date).getTime()
+      return saleTime >= start && saleTime <= end
     })
   }, [sales, startDate, endDate])
 
   const filteredSaleIds = useMemo(() => {
-    return new Set(
-      filteredSales.map((sale) => sale.id),
-    )
+    return new Set(filteredSales.map((sale) => sale.id))
   }, [filteredSales])
 
   const filteredSaleItems = useMemo(() => {
-    return saleItems.filter((item) =>
-      filteredSaleIds.has(item.sale_id),
-    )
+    return saleItems.filter((item) => filteredSaleIds.has(item.sale_id))
   }, [saleItems, filteredSaleIds])
 
   const filteredPayments = useMemo(() => {
-    if (!startDate || !endDate) {
-      return payments
-    }
+    if (!startDate || !endDate) return payments
 
-    const start = new Date(
-      getStartOfDay(startDate),
-    ).getTime()
-
-    const end = new Date(
-      getEndOfDay(endDate),
-    ).getTime()
+    const start = new Date(getStartOfDay(startDate)).getTime()
+    const end = new Date(getEndOfDay(endDate)).getTime()
 
     return payments.filter((payment) => {
-      const paymentTime = new Date(
-        payment.payment_date,
-      ).getTime()
-
-      return (
-        paymentTime >= start &&
-        paymentTime <= end
-      )
+      const paymentTime = new Date(payment.payment_date).getTime()
+      return paymentTime >= start && paymentTime <= end
     })
   }, [payments, startDate, endDate])
 
   const totalRevenue = useMemo(
     () =>
       filteredSales.reduce(
-        (sum, sale) =>
-          sum +
-          (Number(sale.total_revenue) || 0),
-        0,
+        (sum, sale) => sum + (Number(sale.total_revenue) || 0),
+        0
       ),
-    [filteredSales],
+    [filteredSales]
   )
 
   const totalCost = useMemo(
     () =>
       filteredSales.reduce(
-        (sum, sale) =>
-          sum +
-          (Number(sale.total_cost) || 0),
-        0,
+        (sum, sale) => sum + (Number(sale.total_cost) || 0),
+        0
       ),
-    [filteredSales],
+    [filteredSales]
   )
 
   const totalProfit = useMemo(
     () =>
       filteredSales.reduce(
-        (sum, sale) =>
-          sum +
-          (Number(sale.total_profit) || 0),
-        0,
+        (sum, sale) => sum + (Number(sale.total_profit) || 0),
+        0
       ),
-    [filteredSales],
+    [filteredSales]
   )
 
   const totalPaid = useMemo(
     () =>
       filteredPayments.reduce(
-        (sum, payment) =>
-          sum +
-          (Number(payment.amount) || 0),
-        0,
+        (sum, payment) => sum + (Number(payment.amount) || 0),
+        0
       ),
-    [filteredPayments],
+    [filteredPayments]
   )
 
   const totalItemsSold = useMemo(
     () =>
       filteredSaleItems.reduce(
-        (sum, item) =>
-          sum +
-          (Number(item.quantity) || 0),
-        0,
+        (sum, item) => sum + (Number(item.quantity) || 0),
+        0
       ),
-    [filteredSaleItems],
+    [filteredSaleItems]
   )
 
   const outstandingDebt = useMemo(
     () =>
       filteredSales.reduce(
-        (sum, sale) =>
-          sum +
-          Math.max(
-            Number(sale.amount_due) || 0,
-            0,
-          ),
-        0,
+        (sum, sale) => sum + Math.max(Number(sale.amount_due) || 0, 0),
+        0
       ),
-    [filteredSales],
+    [filteredSales]
   )
 
   const averageSale = useMemo(() => {
-    if (filteredSales.length === 0) {
-      return 0
-    }
-
-    return (
-      totalRevenue /
-      filteredSales.length
-    )
+    if (filteredSales.length === 0) return 0
+    return totalRevenue / filteredSales.length
   }, [totalRevenue, filteredSales.length])
 
   const profitMargin = useMemo(() => {
-    if (totalRevenue <= 0) {
-      return 0
-    }
-
-    return (
-      (totalProfit / totalRevenue) *
-      100
-    )
+    if (totalRevenue <= 0) return 0
+    return (totalProfit / totalRevenue) * 100
   }, [totalProfit, totalRevenue])
 
   const stockUnits = useMemo(
     () =>
       batches.reduce(
         (sum, batch) =>
-          sum +
-          Math.max(
-            Number(
-              batch.remaining_quantity,
-            ) || 0,
-            0,
-          ),
-        0,
+          sum + Math.max(Number(batch.remaining_quantity) || 0, 0),
+        0
       ),
-    [batches],
+    [batches]
   )
 
   const stockValue = useMemo(
     () =>
-      batches.reduce(
-        (sum, batch) => {
-          const quantity =
-            Number(
-              batch.remaining_quantity,
-            ) || 0
-
-          const unitCost =
-            Number(batch.unit_cost) || 0
-
-          return sum + quantity * unitCost
-        },
-        0,
-      ),
-    [batches],
+      batches.reduce((sum, batch) => {
+        const quantity = Number(batch.remaining_quantity) || 0
+        const unitCost = Number(batch.unit_cost) || 0
+        return sum + quantity * unitCost
+      }, 0),
+    [batches]
   )
 
-  const productTypeReports =
-    useMemo<ProductTypeReport[]>(() => {
-      const reportMap =
-        new Map<
-          string,
-          ProductTypeReport
-        >()
+  const productTypeReports = useMemo<ProductTypeReport[]>(() => {
+    const reportMap = new Map<string, ProductTypeReport>()
 
-      for (const item of filteredSaleItems) {
-        const productType =
-          productTypes.find(
-            (type) =>
-              type.id ===
-              item.product_type_id,
-          )
-
-        if (!productType) continue
-
-        const product =
-          products.find(
-            (itemProduct) =>
-              itemProduct.id ===
-              productType.product_id,
-          )
-
-        const existing =
-          reportMap.get(
-            productType.id,
-          )
-
-        if (existing) {
-          existing.quantitySold +=
-            Number(item.quantity) || 0
-
-          existing.revenue +=
-            Number(item.revenue) || 0
-
-          existing.cost +=
-            Number(item.cost) || 0
-
-          existing.profit +=
-            Number(item.profit) || 0
-        } else {
-          reportMap.set(
-            productType.id,
-            {
-              productTypeId:
-                productType.id,
-              productName:
-                product?.name ||
-                'Unknown Product',
-              productTypeName:
-                productType.name,
-              quantitySold:
-                Number(
-                  item.quantity,
-                ) || 0,
-              revenue:
-                Number(item.revenue) ||
-                0,
-              cost:
-                Number(item.cost) || 0,
-              profit:
-                Number(item.profit) || 0,
-            },
-          )
-        }
-      }
-
-      return Array.from(
-        reportMap.values(),
-      ).sort(
-        (a, b) =>
-          b.profit - a.profit,
+    for (const item of filteredSaleItems) {
+      const productType = productTypes.find(
+        (type) => type.id === item.product_type_id
       )
-    }, [
-      filteredSaleItems,
-      productTypes,
-      products,
-    ])
+      if (!productType) continue
 
-  const paymentStatusSummary =
-    useMemo(() => {
-      const summary = {
-        paid: 0,
-        partial: 0,
-        unpaid: 0,
+      const product = products.find(
+        (itemProduct) => itemProduct.id === productType.product_id
+      )
+
+      const existing = reportMap.get(productType.id)
+
+      if (existing) {
+        existing.quantitySold += Number(item.quantity) || 0
+        existing.revenue += Number(item.revenue) || 0
+        existing.cost += Number(item.cost) || 0
+        existing.profit += Number(item.profit) || 0
+      } else {
+        reportMap.set(productType.id, {
+          productTypeId: productType.id,
+          productName: product?.name || tx('Unknown Product'),
+          productTypeName: productType.name,
+          quantitySold: Number(item.quantity) || 0,
+          revenue: Number(item.revenue) || 0,
+          cost: Number(item.cost) || 0,
+          profit: Number(item.profit) || 0,
+        })
       }
+    }
 
-      for (const sale of filteredSales) {
-        const status =
-          sale.payment_status
+    return Array.from(reportMap.values()).sort((a, b) => b.profit - a.profit)
+  }, [filteredSaleItems, productTypes, products, isRw])
 
-        if (status === 'paid') {
-          summary.paid += 1
-        } else if (
-          status === 'partial'
-        ) {
-          summary.partial += 1
-        } else {
-          summary.unpaid += 1
-        }
+  const paymentStatusSummary = useMemo(() => {
+    const summary = { paid: 0, partial: 0, unpaid: 0 }
+
+    for (const sale of filteredSales) {
+      const status = sale.payment_status
+      if (status === 'paid') {
+        summary.paid += 1
+      } else if (status === 'partial') {
+        summary.partial += 1
+      } else {
+        summary.unpaid += 1
       }
+    }
 
-      return summary
-    }, [filteredSales])
+    return summary
+  }, [filteredSales])
 
   function setToday() {
     const today = getToday()
-
     setStartDate(today)
     setEndDate(today)
   }
 
   function setYesterday() {
     const yesterday = getYesterday()
-
     setStartDate(yesterday)
     setEndDate(yesterday)
   }
@@ -668,89 +577,32 @@ export default function ReportsPage() {
   function handleExportCsv() {
     const rows: string[][] = []
 
-    rows.push([
-      'Kitchenware Management Report',
-    ])
-
-    rows.push([
-      `Period: ${startDate} to ${endDate}`,
-    ])
-
+    rows.push([tx('Kitchenware Management Report')])
+    rows.push([`${tx('Period:')} ${startDate} to ${endDate}`])
     rows.push([])
 
-    rows.push([
-      'Summary',
-      'Value',
-    ])
-
-    rows.push([
-      'Total Revenue',
-      `${totalRevenue} RWF`,
-    ])
-
-    rows.push([
-      'Total Cost',
-      `${totalCost} RWF`,
-    ])
-
-    rows.push([
-      'Total Profit',
-      `${totalProfit} RWF`,
-    ])
-
-    rows.push([
-      'Profit Margin',
-      `${profitMargin.toFixed(2)}%`,
-    ])
-
-    rows.push([
-      'Total Payments Received',
-      `${totalPaid} RWF`,
-    ])
-
-    rows.push([
-      'Outstanding Debt',
-      `${outstandingDebt} RWF`,
-    ])
-
-    rows.push([
-      'Number of Sales',
-      String(filteredSales.length),
-    ])
-
-    rows.push([
-      'Items Sold',
-      String(totalItemsSold),
-    ])
-
-    rows.push([
-      'Average Sale',
-      `${averageSale} RWF`,
-    ])
-
-    rows.push([
-      'Current Stock Units',
-      String(stockUnits),
-    ])
-
-    rows.push([
-      'Current Stock Value',
-      `${stockValue} RWF`,
-    ])
+    rows.push(['Summary', 'Value'])
+    rows.push([tx('Total Revenue'), `${totalRevenue} RWF`])
+    rows.push([tx('Total Cost'), `${totalCost} RWF`])
+    rows.push([tx('Total Profit'), `${totalProfit} RWF`])
+    rows.push([tx('profit margin'), `${profitMargin.toFixed(2)}%`])
+    rows.push([tx('Payments Received'), `${totalPaid} RWF`])
+    rows.push([tx('Outstanding Debt'), `${outstandingDebt} RWF`])
+    rows.push([tx('Sales'), String(filteredSales.length)])
+    rows.push([tx('Items Sold'), String(totalItemsSold)])
+    rows.push([tx('Average Sale'), `${averageSale} RWF`])
+    rows.push([tx('Units In Stock'), String(stockUnits)])
+    rows.push([tx('Current Stock Value'), `${stockValue} RWF`])
 
     rows.push([])
-
+    rows.push([tx('Product Type / Kind Performance')])
     rows.push([
-      'Product Type Performance',
-    ])
-
-    rows.push([
-      'Product',
-      'Product Type / Kind',
-      'Quantity Sold',
-      'Revenue',
-      'Cost',
-      'Profit',
+      tx('Product'),
+      tx('Product Type / Kind'),
+      tx('Quantity Sold'),
+      tx('Revenue'),
+      tx('Cost'),
+      tx('Profit'),
     ])
 
     for (const row of productTypeReports) {
@@ -765,125 +617,58 @@ export default function ReportsPage() {
     }
 
     rows.push([])
-
+    rows.push([tx('Sales Report')])
     rows.push([
-      'Sales',
-    ])
-
-    rows.push([
-      'Date',
+      tx('Date'),
       'Sale ID',
-      'Revenue',
-      'Cost',
-      'Profit',
-      'Paid',
-      'Due',
-      'Status',
+      tx('Revenue'),
+      tx('Cost'),
+      tx('Profit'),
+      tx('Paid'),
+      tx('Due'),
+      tx('Status'),
     ])
 
     for (const sale of filteredSales) {
       rows.push([
-        formatDateTime(
-          sale.sale_date,
-        ),
+        formatDateTime(sale.sale_date),
         sale.id,
-        String(
-          Number(
-            sale.total_revenue,
-          ) || 0,
-        ),
-        String(
-          Number(
-            sale.total_cost,
-          ) || 0,
-        ),
-        String(
-          Number(
-            sale.total_profit,
-          ) || 0,
-        ),
-        String(
-          Number(
-            sale.amount_paid,
-          ) || 0,
-        ),
-        String(
-          Number(
-            sale.amount_due,
-          ) || 0,
-        ),
+        String(Number(sale.total_revenue) || 0),
+        String(Number(sale.total_cost) || 0),
+        String(Number(sale.total_profit) || 0),
+        String(Number(sale.amount_paid) || 0),
+        String(Number(sale.amount_due) || 0),
         sale.payment_status,
       ])
     }
 
     rows.push([])
-
-    rows.push([
-      'Payment History',
-    ])
-
-    rows.push([
-      'Date',
-      'Payment ID',
-      'Sale ID',
-      'Amount',
-      'Notes',
-    ])
+    rows.push([tx('Payment Report')])
+    rows.push([tx('Date'), 'Payment ID', 'Sale ID', tx('Amount'), tx('Notes')])
 
     for (const payment of filteredPayments) {
       rows.push([
-        formatDateTime(
-          payment.payment_date,
-        ),
+        formatDateTime(payment.payment_date),
         payment.id,
         payment.sale_id,
-        String(
-          Number(payment.amount) || 0,
-        ),
+        String(Number(payment.amount) || 0),
         payment.notes || '',
       ])
     }
 
-    const csv = rows
-      .map((row) =>
-        row
-          .map(escapeCsv)
-          .join(','),
-      )
-      .join('\n')
-
-    const blob = new Blob(
-      [csv],
-      {
-        type: 'text/csv;charset=utf-8;',
-      },
-    )
-
-    const url =
-      URL.createObjectURL(blob)
-
-    const link =
-      document.createElement('a')
-
+    const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
     link.href = url
-
-    link.download =
-      `kitchenware-report-${startDate}-to-${endDate}.csv`
-
+    link.download = `kitchenware-report-${startDate}-to-${endDate}.csv`
     document.body.appendChild(link)
-
     link.click()
-
     document.body.removeChild(link)
-
     URL.revokeObjectURL(url)
   }
 
-  const periodLabel =
-    getReportPeriodLabel(
-      startDate,
-      endDate,
-    )
+  const periodLabel = getReportPeriodLabel(startDate, endDate, isRw)
 
   return (
     <>
@@ -891,33 +676,33 @@ export default function ReportsPage() {
         {/* Hero Header */}
         <section className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 shadow-xl dark:border-gray-800 sm:p-8 print:hidden">
           <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl" />
-
           <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-blue-500/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-indigo-100 backdrop-blur">
-                <span>📊</span>
-                Business Intelligence
+                <ChartIcon className="h-4 w-4" />
+                {tx('Business Intelligence')}
               </div>
 
               <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-                Reports
+                {tx('Reports')}
               </h1>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                Understand today&apos;s sales,
-                profit, payments, debts, and
-                inventory at a glance.
+                {tx(
+                  "Understand today's sales, profit, payments, debts, and inventory at a glance."
+                )}
               </p>
 
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
-                  📅 {periodLabel}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {periodLabel}
                 </span>
 
                 <span className="rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-                  ● Live Data
+                  ● {tx('Live Data')}
                 </span>
               </div>
             </div>
@@ -928,7 +713,8 @@ export default function ReportsPage() {
                 onClick={handlePrint}
                 className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
               >
-                🖨️ Print
+                <PrintIcon className="h-4 w-4" />
+                {tx('Print')}
               </button>
 
               <button
@@ -936,7 +722,8 @@ export default function ReportsPage() {
                 onClick={handleExportCsv}
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400"
               >
-                📥 Export CSV
+                <DownloadIcon className="h-4 w-4" />
+                {tx('Export CSV')}
               </button>
             </div>
           </div>
@@ -945,33 +732,24 @@ export default function ReportsPage() {
         {/* Print Header */}
         <div className="hidden print:block">
           <h1 className="text-2xl font-bold">
-            Kitchenware Management Report
+            {tx('Kitchenware Management Report')}
           </h1>
 
           <p className="mt-1 text-sm text-gray-600">
-            Period: {startDate} to {endDate}
+            {tx('Period:')} {startDate} to {endDate}
           </p>
 
           <p className="mt-1 text-xs text-gray-500">
-            Generated:{' '}
-            {new Date().toLocaleString()}
+            {tx('Generated:')} {new Date().toLocaleString()}
           </p>
         </div>
 
         {error && (
           <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 print:hidden">
-            <span className="text-lg">
-              ⚠️
-            </span>
-
+            <AlertIcon className="h-5 w-5 text-red-600 shrink-0" />
             <div>
-              <p className="font-semibold">
-                Report could not be loaded
-              </p>
-
-              <p className="mt-1">
-                {error}
-              </p>
+              <p className="font-semibold">{tx('Report could not be loaded')}</p>
+              <p className="mt-1">{error}</p>
             </div>
           </div>
         )}
@@ -981,48 +759,39 @@ export default function ReportsPage() {
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-lg dark:bg-indigo-500/10">
-                  📅
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  <CalendarIcon className="h-5 w-5" />
                 </span>
 
                 <div>
                   <h2 className="font-bold text-gray-900 dark:text-white">
-                    Report Period
+                    {tx('Report Period')}
                   </h2>
 
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Choose the period you want to analyse.
+                    {tx('Choose the period you want to analyse.')}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <QuickDateButton
-                  label="Today"
-                  active={
-                    startDate === getToday() &&
-                    endDate === getToday()
-                  }
+                  label={tx('Today')}
+                  active={startDate === getToday() && endDate === getToday()}
                   onClick={setToday}
                 />
 
                 <QuickDateButton
-                  label="Yesterday"
+                  label={tx('Yesterday')}
                   active={
-                    startDate ===
-                      getYesterday() &&
-                    endDate === getYesterday()
+                    startDate === getYesterday() && endDate === getYesterday()
                   }
                   onClick={setYesterday}
                 />
 
                 <QuickDateButton
-                  label="This Week"
-                  active={
-                    startDate ===
-                      getWeekStart() &&
-                    endDate === getToday()
-                  }
+                  label={tx('This Week')}
+                  active={startDate === getWeekStart() && endDate === getToday()}
                   onClick={setThisWeek}
                 />
               </div>
@@ -1030,14 +799,14 @@ export default function ReportsPage() {
 
             <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-2xl xl:grid-cols-3">
               <DateInput
-                label="Start Date"
+                label={tx('Start Date')}
                 value={startDate}
                 max={endDate}
                 onChange={setStartDate}
               />
 
               <DateInput
-                label="End Date"
+                label={tx('End Date')}
                 value={endDate}
                 min={startDate}
                 onChange={setEndDate}
@@ -1048,7 +817,8 @@ export default function ReportsPage() {
                 onClick={loadData}
                 className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white transition hover:bg-indigo-700 sm:col-span-2 xl:col-span-1"
               >
-                🔄 Refresh
+                <RefreshIcon className="h-4 w-4" />
+                {tx('Refresh')}
               </button>
             </div>
           </div>
@@ -1062,11 +832,11 @@ export default function ReportsPage() {
               </div>
 
               <p className="mt-4 font-semibold text-gray-900 dark:text-white">
-                Building your report...
+                {tx('Building your report...')}
               </p>
 
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Loading sales, payments, and inventory.
+                {tx('Loading sales, payments, and inventory.')}
               </p>
             </div>
           </div>
@@ -1075,38 +845,38 @@ export default function ReportsPage() {
             {/* Main KPIs */}
             <section>
               <SectionHeading
-                icon="💰"
-                title="Financial Overview"
-                description={`Performance for ${periodLabel.toLowerCase()}.`}
+                icon={<MoneyIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Financial Overview')}
+                description={`${tx('Performance for')} ${periodLabel.toLowerCase()}.`}
               />
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <ReportCard
-                  icon="💵"
-                  label="Total Revenue"
+                  icon={<MoneyIcon />}
+                  label={tx('Total Revenue')}
                   value={`${formatMoney(totalRevenue)} RWF`}
                   accent="indigo"
                 />
 
                 <ReportCard
-                  icon="📦"
-                  label="Total Cost"
+                  icon={<BoxIcon />}
+                  label={tx('Total Cost')}
                   value={`${formatMoney(totalCost)} RWF`}
                   accent="slate"
                 />
 
                 <ReportCard
-                  icon="📈"
-                  label="Total Profit"
+                  icon={<ProfitIcon />}
+                  label={tx('Total Profit')}
                   value={`${formatMoney(totalProfit)} RWF`}
                   valueClass="text-emerald-600 dark:text-emerald-400"
                   accent="emerald"
-                  footer={`${profitMargin.toFixed(1)}% profit margin`}
+                  footer={`${profitMargin.toFixed(1)}% ${tx('profit margin')}`}
                 />
 
                 <ReportCard
-                  icon="⚠️"
-                  label="Outstanding Debt"
+                  icon={<DebtIcon />}
+                  label={tx('Outstanding Debt')}
                   value={`${formatMoney(outstandingDebt)} RWF`}
                   valueClass="text-amber-600 dark:text-amber-400"
                   accent="amber"
@@ -1117,41 +887,37 @@ export default function ReportsPage() {
             {/* Activity KPIs */}
             <section>
               <SectionHeading
-                icon="⚡"
-                title="Business Activity"
-                description="Quick numbers for the selected period."
+                icon={<ActivityIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Business Activity')}
+                description={tx('Quick numbers for the selected period.')}
               />
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <ReportCard
-                  icon="🧾"
-                  label="Sales"
-                  value={String(
-                    filteredSales.length,
-                  )}
+                  icon={<ReceiptIcon />}
+                  label={tx('Sales')}
+                  value={String(filteredSales.length)}
                   accent="blue"
                 />
 
                 <ReportCard
-                  icon="🛒"
-                  label="Items Sold"
-                  value={String(
-                    totalItemsSold,
-                  )}
+                  icon={<BoxIcon />}
+                  label={tx('Items Sold')}
+                  value={String(totalItemsSold)}
                   accent="violet"
                 />
 
                 <ReportCard
-                  icon="💳"
-                  label="Payments Received"
+                  icon={<WalletIcon />}
+                  label={tx('Payments Received')}
                   value={`${formatMoney(totalPaid)} RWF`}
                   valueClass="text-indigo-600 dark:text-indigo-400"
                   accent="indigo"
                 />
 
                 <ReportCard
-                  icon="🎯"
-                  label="Average Sale"
+                  icon={<TargetIcon />}
+                  label={tx('Average Sale')}
                   value={`${formatMoney(averageSale)} RWF`}
                   accent="cyan"
                 />
@@ -1161,22 +927,24 @@ export default function ReportsPage() {
             {/* Stock */}
             <section>
               <SectionHeading
-                icon="📦"
-                title="Current Stock"
-                description="Current inventory based on remaining quantities and exact batch supply costs."
+                icon={<InventoryIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Current Stock')}
+                description={tx(
+                  'Current inventory based on remaining quantities and exact batch supply costs.'
+                )}
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <ReportCard
-                  icon="🔢"
-                  label="Units In Stock"
+                  icon={<BoxIcon />}
+                  label={tx('Units In Stock')}
                   value={String(stockUnits)}
                   accent="blue"
                 />
 
                 <ReportCard
-                  icon="💎"
-                  label="Current Stock Value"
+                  icon={<ValueIcon />}
+                  label={tx('Current Stock Value')}
                   value={`${formatMoney(stockValue)} RWF`}
                   accent="violet"
                 />
@@ -1186,38 +954,32 @@ export default function ReportsPage() {
             {/* Payment Status */}
             <section>
               <SectionHeading
-                icon="💳"
-                title="Payment Status"
-                description="How sales in this period were paid."
+                icon={<WalletIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Payment Status')}
+                description={tx('How sales in this period were paid.')}
               />
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <StatusCard
-                  icon="✅"
-                  label="Paid Sales"
-                  value={
-                    paymentStatusSummary.paid
-                  }
+                  icon={<CheckIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />}
+                  label={tx('Paid Sales')}
+                  value={paymentStatusSummary.paid}
                   className="text-emerald-600 dark:text-emerald-400"
                   iconClass="bg-emerald-50 dark:bg-emerald-500/10"
                 />
 
                 <StatusCard
-                  icon="🟡"
-                  label="Partial Sales"
-                  value={
-                    paymentStatusSummary.partial
-                  }
+                  icon={<WarningIcon className="h-6 w-6 text-amber-600 dark:text-amber-400" />}
+                  label={tx('Partial Sales')}
+                  value={paymentStatusSummary.partial}
                   className="text-amber-600 dark:text-amber-400"
                   iconClass="bg-amber-50 dark:bg-amber-500/10"
                 />
 
                 <StatusCard
-                  icon="🔴"
-                  label="Unpaid Sales"
-                  value={
-                    paymentStatusSummary.unpaid
-                  }
+                  icon={<AlertIcon className="h-6 w-6 text-red-600 dark:text-red-400" />}
+                  label={tx('Unpaid Sales')}
+                  value={paymentStatusSummary.unpaid}
                   className="text-red-600 dark:text-red-400"
                   iconClass="bg-red-50 dark:bg-red-500/10"
                 />
@@ -1227,113 +989,81 @@ export default function ReportsPage() {
             {/* Product Performance */}
             <section>
               <SectionHeading
-                icon="🏆"
-                title="Product Type / Kind Performance"
-                description="The strongest product types and kinds during the selected period."
+                icon={<TrophyIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Product Type / Kind Performance')}
+                description={tx(
+                  'The strongest product types and kinds during the selected period.'
+                )}
               />
 
               <ReportTable>
-                {productTypeReports.length ===
-                0 ? (
+                {productTypeReports.length === 0 ? (
                   <EmptyState
-                    icon="📊"
-                    title="No product sales yet"
-                    description="There are no product type sales for this period."
+                    icon={<ChartIcon className="h-8 w-8 text-gray-400" />}
+                    title={tx('No product sales yet')}
+                    description={tx(
+                      'There are no product type sales for this period.'
+                    )}
                   />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-[950px] w-full text-left text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800/60">
                         <tr>
-                          <TableHeader>
-                            Product
-                          </TableHeader>
-
-                          <TableHeader>
-                            Product Type / Kind
-                          </TableHeader>
-
-                          <TableHeader>
-                            Quantity Sold
-                          </TableHeader>
-
-                          <TableHeader>
-                            Revenue
-                          </TableHeader>
-
-                          <TableHeader>
-                            Cost
-                          </TableHeader>
-
-                          <TableHeader>
-                            Profit
-                          </TableHeader>
+                          <TableHeader>{tx('Product')}</TableHeader>
+                          <TableHeader>{tx('Product Type / Kind')}</TableHeader>
+                          <TableHeader>{tx('Quantity Sold')}</TableHeader>
+                          <TableHeader>{tx('Revenue')}</TableHeader>
+                          <TableHeader>{tx('Cost')}</TableHeader>
+                          <TableHeader>{tx('Profit')}</TableHeader>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {productTypeReports.map(
-                          (row, index) => (
-                            <tr
-                              key={
-                                row.productTypeId
-                              }
-                              className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                            >
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-3">
-                                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-sm dark:bg-indigo-500/10">
-                                    {index ===
-                                    0
-                                      ? '🏆'
-                                      : '📦'}
-                                  </span>
-
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {
-                                      row.productName
-                                    }
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td className="px-5 py-4 font-medium text-gray-700 dark:text-gray-300">
-                                {
-                                  row.productTypeName
-                                }
-                              </td>
-
-                              <td className="px-5 py-4 font-semibold">
-                                {
-                                  row.quantitySold
-                                }
-                              </td>
-
-                              <td className="px-5 py-4">
-                                {formatMoney(
-                                  row.revenue,
-                                )}{' '}
-                                RWF
-                              </td>
-
-                              <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
-                                {formatMoney(
-                                  row.cost,
-                                )}{' '}
-                                RWF
-                              </td>
-
-                              <td className="px-5 py-4">
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                  {formatMoney(
-                                    row.profit,
-                                  )}{' '}
-                                  RWF
+                        {productTypeReports.map((row, index) => (
+                          <tr
+                            key={row.productTypeId}
+                            className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                                  {index === 0 ? (
+                                    <TrophyIcon className="h-5 w-5 text-amber-500" />
+                                  ) : (
+                                    <BoxIcon className="h-5 w-5 text-slate-500" />
+                                  )}
                                 </span>
-                              </td>
-                            </tr>
-                          ),
-                        )}
+
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {row.productName}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 font-medium text-gray-700 dark:text-gray-300">
+                              {row.productTypeName}
+                            </td>
+
+                            <td className="px-5 py-4 font-semibold">
+                              {row.quantitySold}
+                            </td>
+
+                            <td className="px-5 py-4">
+                              {formatMoney(row.revenue)} RWF
+                            </td>
+
+                            <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                              {formatMoney(row.cost)} RWF
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                {formatMoney(row.profit)} RWF
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -1344,122 +1074,77 @@ export default function ReportsPage() {
             {/* Sales Report */}
             <section>
               <SectionHeading
-                icon="🧾"
-                title="Sales Report"
-                description={`${filteredSales.length} sale${filteredSales.length === 1 ? '' : 's'} recorded in this period.`}
+                icon={<ReceiptIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Sales Report')}
+                description={`${filteredSales.length} ${
+                  filteredSales.length === 1
+                    ? tx('sale recorded in this period.')
+                    : tx('sales recorded in this period.')
+                }`}
               />
 
               <ReportTable>
-                {filteredSales.length ===
-                0 ? (
+                {filteredSales.length === 0 ? (
                   <EmptyState
-                    icon="🧾"
-                    title="No sales found"
-                    description="No sales were recorded for the selected period."
+                    icon={<ReceiptIcon className="h-8 w-8 text-gray-400" />}
+                    title={tx('No sales found')}
+                    description={tx(
+                      'No sales were recorded for the selected period.'
+                    )}
                   />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-[1050px] w-full text-left text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800/60">
                         <tr>
-                          <TableHeader>
-                            Date
-                          </TableHeader>
-
-                          <TableHeader>
-                            Revenue
-                          </TableHeader>
-
-                          <TableHeader>
-                            Cost
-                          </TableHeader>
-
-                          <TableHeader>
-                            Profit
-                          </TableHeader>
-
-                          <TableHeader>
-                            Paid
-                          </TableHeader>
-
-                          <TableHeader>
-                            Due
-                          </TableHeader>
-
-                          <TableHeader>
-                            Status
-                          </TableHeader>
+                          <TableHeader>{tx('Date')}</TableHeader>
+                          <TableHeader>{tx('Revenue')}</TableHeader>
+                          <TableHeader>{tx('Cost')}</TableHeader>
+                          <TableHeader>{tx('Profit')}</TableHeader>
+                          <TableHeader>{tx('Paid')}</TableHeader>
+                          <TableHeader>{tx('Due')}</TableHeader>
+                          <TableHeader>{tx('Status')}</TableHeader>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {filteredSales.map(
-                          (sale) => (
-                            <tr
-                              key={sale.id}
-                              className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                            >
-                              <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
-                                {formatDateTime(
-                                  sale.sale_date,
-                                )}
-                              </td>
+                        {filteredSales.map((sale) => (
+                          <tr
+                            key={sale.id}
+                            className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          >
+                            <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
+                              {formatDateTime(sale.sale_date)}
+                            </td>
 
-                              <td className="px-5 py-4 font-semibold text-gray-900 dark:text-white">
-                                {formatMoney(
-                                  Number(
-                                    sale.total_revenue,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 font-semibold text-gray-900 dark:text-white">
+                              {formatMoney(Number(sale.total_revenue) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
-                                {formatMoney(
-                                  Number(
-                                    sale.total_cost,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
+                              {formatMoney(Number(sale.total_cost) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400">
-                                {formatMoney(
-                                  Number(
-                                    sale.total_profit,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400">
+                              {formatMoney(Number(sale.total_profit) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
-                                {formatMoney(
-                                  Number(
-                                    sale.amount_paid,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
+                              {formatMoney(Number(sale.amount_paid) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4 font-bold text-amber-600 dark:text-amber-400">
-                                {formatMoney(
-                                  Number(
-                                    sale.amount_due,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 font-bold text-amber-600 dark:text-amber-400">
+                              {formatMoney(Number(sale.amount_due) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4">
-                                <PaymentStatusBadge
-                                  status={
-                                    sale.payment_status
-                                  }
-                                />
-                              </td>
-                            </tr>
-                          ),
-                        )}
+                            <td className="px-5 py-4">
+                              <PaymentStatusBadge
+                                status={sale.payment_status}
+                                isRw={isRw}
+                              />
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -1470,83 +1155,61 @@ export default function ReportsPage() {
             {/* Payment Report */}
             <section>
               <SectionHeading
-                icon="💳"
-                title="Payment Report"
-                description={`${filteredPayments.length} payment${filteredPayments.length === 1 ? '' : 's'} recorded in this period.`}
+                icon={<WalletIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                title={tx('Payment Report')}
+                description={`${filteredPayments.length} ${
+                  filteredPayments.length === 1
+                    ? tx('payment recorded in this period.')
+                    : tx('payments recorded in this period.')
+                }`}
               />
 
               <ReportTable>
-                {filteredPayments.length ===
-                0 ? (
+                {filteredPayments.length === 0 ? (
                   <EmptyState
-                    icon="💳"
-                    title="No payments found"
-                    description="No payments were recorded for the selected period."
+                    icon={<WalletIcon className="h-8 w-8 text-gray-400" />}
+                    title={tx('No payments found')}
+                    description={tx(
+                      'No payments were recorded for the selected period.'
+                    )}
                   />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-[800px] w-full text-left text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800/60">
                         <tr>
-                          <TableHeader>
-                            Date
-                          </TableHeader>
-
-                          <TableHeader>
-                            Amount
-                          </TableHeader>
-
-                          <TableHeader>
-                            Sale
-                          </TableHeader>
-
-                          <TableHeader>
-                            Notes
-                          </TableHeader>
+                          <TableHeader>{tx('Date')}</TableHeader>
+                          <TableHeader>{tx('Amount')}</TableHeader>
+                          <TableHeader>{tx('Sale')}</TableHeader>
+                          <TableHeader>{tx('Notes')}</TableHeader>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {filteredPayments.map(
-                          (payment) => (
-                            <tr
-                              key={
-                                payment.id
-                              }
-                              className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                            >
-                              <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
-                                {formatDateTime(
-                                  payment.payment_date,
-                                )}
-                              </td>
+                        {filteredPayments.map((payment) => (
+                          <tr
+                            key={payment.id}
+                            className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          >
+                            <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
+                              {formatDateTime(payment.payment_date)}
+                            </td>
 
-                              <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400">
-                                {formatMoney(
-                                  Number(
-                                    payment.amount,
-                                  ) || 0,
-                                )}{' '}
-                                RWF
-                              </td>
+                            <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400">
+                              {formatMoney(Number(payment.amount) || 0)} RWF
+                            </td>
 
-                              <td className="px-5 py-4">
-                                <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                  {payment.sale_id.slice(
-                                    0,
-                                    8,
-                                  )}
-                                  ...
-                                </span>
-                              </td>
+                            <td className="px-5 py-4">
+                              <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                {payment.sale_id.slice(0, 8)}...
+                              </span>
+                            </td>
 
-                              <td className="max-w-[300px] truncate px-5 py-4 text-gray-600 dark:text-gray-400">
-                                {payment.notes ||
-                                  '—'}
-                              </td>
-                            </tr>
-                          ),
-                        )}
+                            <td className="max-w-[300px] truncate px-5 py-4 text-gray-600 dark:text-gray-400">
+                              {payment.notes || '—'}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -1596,18 +1259,22 @@ export default function ReportsPage() {
   )
 }
 
+/* =========================================================
+   COMPONENTS
+========================================================= */
+
 function SectionHeading({
   icon,
   title,
   description,
 }: {
-  icon: string
+  icon: ReactNode
   title: string
   description: string
 }) {
   return (
     <div className="mb-4 flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-lg dark:bg-indigo-500/10">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10">
         {icon}
       </div>
 
@@ -1632,35 +1299,21 @@ function ReportCard({
   accent = 'indigo',
   footer,
 }: {
-  icon: string
+  icon: ReactNode
   label: string
   value: string
   valueClass?: string
-  accent?:
-    | 'indigo'
-    | 'slate'
-    | 'emerald'
-    | 'amber'
-    | 'blue'
-    | 'violet'
-    | 'cyan'
+  accent?: 'indigo' | 'slate' | 'emerald' | 'amber' | 'blue' | 'violet' | 'cyan'
   footer?: string
 }) {
   const accentClasses = {
-    indigo:
-      'bg-indigo-50 dark:bg-indigo-500/10',
-    slate:
-      'bg-slate-100 dark:bg-slate-800',
-    emerald:
-      'bg-emerald-50 dark:bg-emerald-500/10',
-    amber:
-      'bg-amber-50 dark:bg-amber-500/10',
-    blue:
-      'bg-blue-50 dark:bg-blue-500/10',
-    violet:
-      'bg-violet-50 dark:bg-violet-500/10',
-    cyan:
-      'bg-cyan-50 dark:bg-cyan-500/10',
+    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400',
+    slate: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
+    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
+    cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400',
   }
 
   return (
@@ -1671,9 +1324,7 @@ function ReportCard({
             {label}
           </p>
 
-          <p
-            className={`mt-2 break-words text-2xl font-black tracking-tight ${valueClass}`}
-          >
+          <p className={`mt-2 break-words text-2xl font-black tracking-tight ${valueClass}`}>
             {value}
           </p>
 
@@ -1685,7 +1336,7 @@ function ReportCard({
         </div>
 
         <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl transition group-hover:scale-105 ${accentClasses[accent]}`}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105 ${accentClasses[accent]}`}
         >
           {icon}
         </div>
@@ -1701,7 +1352,7 @@ function StatusCard({
   className,
   iconClass,
 }: {
-  icon: string
+  icon: ReactNode
   label: string
   value: number
   className: string
@@ -1714,15 +1365,13 @@ function StatusCard({
           {label}
         </p>
 
-        <p
-          className={`mt-1 text-3xl font-black ${className}`}
-        >
+        <p className={`mt-1 text-3xl font-black ${className}`}>
           {value}
         </p>
       </div>
 
       <div
-        className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl ${iconClass}`}
+        className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconClass}`}
       >
         {icon}
       </div>
@@ -1778,20 +1427,14 @@ function DateInput({
         value={value}
         min={min}
         max={max}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
+        onChange={(event) => onChange(event.target.value)}
         className="min-h-[46px] w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
       />
     </div>
   )
 }
 
-function ReportTable({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function ReportTable({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       {children}
@@ -1799,11 +1442,7 @@ function ReportTable({
   )
 }
 
-function TableHeader({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function TableHeader({ children }: { children: ReactNode }) {
   return (
     <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
       {children}
@@ -1816,13 +1455,13 @@ function EmptyState({
   title,
   description,
 }: {
-  icon: string
+  icon: ReactNode
   title: string
   description: string
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-2xl dark:bg-gray-800">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
         {icon}
       </div>
 
@@ -1839,17 +1478,18 @@ function EmptyState({
 
 function PaymentStatusBadge({
   status,
+  isRw,
 }: {
   status: string
+  isRw: boolean
 }) {
-  const normalized =
-    status.toLowerCase()
+  const normalized = status.toLowerCase()
 
   if (normalized === 'paid') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
         <span>✓</span>
-        Paid
+        {isRw ? 'Yishyuwe' : 'Paid'}
       </span>
     )
   }
@@ -1858,7 +1498,7 @@ function PaymentStatusBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
         <span>◐</span>
-        Partial
+        {isRw ? 'Igice' : 'Partial'}
       </span>
     )
   }
@@ -1866,7 +1506,222 @@ function PaymentStatusBadge({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold capitalize text-red-700 dark:bg-red-500/10 dark:text-red-400">
       <span>!</span>
-      {status.replace(/_/g, ' ')}
+      {isRw ? 'Ntiyishyuwe' : status.replace(/_/g, ' ')}
     </span>
+  )
+}
+
+/* =========================================================
+   SVG ICONS
+========================================================= */
+
+function Icon({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`h-5 w-5 ${className}`}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+function MoneyIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 9h.01M17 15h.01" />
+      <circle cx="12" cy="12" r="2.5" />
+    </Icon>
+  )
+}
+
+function ProfitIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="m7 15 3-4 3 2 5-7" />
+      <path d="M15 6h3v3" />
+    </Icon>
+  )
+}
+
+function WalletIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H19v14H6.5A2.5 2.5 0 0 1 4 16.5z" />
+      <path d="M4 8h15" />
+      <path d="M15 12h5" />
+      <path d="M16.5 12v.01" />
+    </Icon>
+  )
+}
+
+function DebtIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10" />
+      <path d="M15 9.5c-.7-.8-1.7-1.2-3-1.2-1.7 0-2.8.8-2.8 2s1.1 1.8 2.8 2.1 2.8.6 2.8 2-1.1 2-2.8 2c-1.3 0-2.4-.5-3.1-1.3" />
+    </Icon>
+  )
+}
+
+function ReceiptIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
+      <path d="M9 8h6M9 12h6M9 16h3" />
+    </Icon>
+  )
+}
+
+function BoxIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+      <path d="m4 7.5 8 4.5 8-4.5" />
+      <path d="M12 12v9" />
+    </Icon>
+  )
+}
+
+function InventoryIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M4 7h16v13H4z" />
+      <path d="M7 7V4h10v3" />
+      <path d="M8 11h8M8 15h5" />
+    </Icon>
+  )
+}
+
+function ValueIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7v10" />
+      <path d="M15 9.5c-.6-.8-1.6-1.2-3-1.2-1.6 0-2.7.7-2.7 1.9s1.1 1.7 2.7 2 2.7.6 2.7 1.9-1.1 1.9-2.7 1.9c-1.4 0-2.5-.4-3.1-1.2" />
+    </Icon>
+  )
+}
+
+function TargetIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="1" />
+    </Icon>
+  )
+}
+
+function TrophyIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2" />
+      <path d="M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2" />
+      <path d="M4 5h16v6a7 7 0 0 1-14 0V5z" />
+      <path d="M12 16v3" />
+      <path d="M8 21h8" />
+    </Icon>
+  )
+}
+
+function ActivityIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M3 12h4l2-6 4 12 2-6h6" />
+    </Icon>
+  )
+}
+
+function ChartIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M7 16v-4M12 16V8M17 16v-7" />
+    </Icon>
+  )
+}
+
+function CalendarIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </Icon>
+  )
+}
+
+function PrintIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M6 9V2h12v7" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M6 14h12v8H6z" />
+    </Icon>
+  )
+}
+
+function DownloadIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </Icon>
+  )
+}
+
+function WarningIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="m12 3 9 17H3z" />
+      <path d="M12 9v5M12 17v.01" />
+    </Icon>
+  )
+}
+
+function AlertIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v5M12 16v.01" />
+    </Icon>
+  )
+}
+
+function CheckIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 2.5 2.5L16 9" />
+    </Icon>
+  )
+}
+
+function RefreshIcon({ className = '' }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M20 11a8 8 0 0 0-14-5L4 8" />
+      <path d="M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14 5l2-2" />
+      <path d="M20 20v-4h-4" />
+    </Icon>
   )
 }

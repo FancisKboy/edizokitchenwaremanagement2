@@ -9,6 +9,7 @@ import {
 
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/modal'
+import { useAppPreferences } from '@/app/providers'
 
 type Customer = {
   id: string
@@ -47,6 +48,134 @@ type DebtRow = {
   totalDue: number
 }
 
+/* -------------------------------------------------------------------------- */
+/* TRANSLATIONS (English / Kinyarwanda)                                       */
+/* -------------------------------------------------------------------------- */
+
+const DEBTS_TRANSLATIONS: Record<string, string> = {
+  'Customer Credit Control': "Gucunga Amadeni y'Abakiriya",
+  Debts: 'Amadeni',
+  'Track customer balances, record payments, and keep every payment history organized.':
+    "Kurikirana amadeni y'abakiriya, kwandika ubwishyu, no kubika neza amateka y'ubwishyu bwose.",
+  Outstanding: 'Amadeni Asigaye',
+  'Something went wrong': 'Hari ibitagenze neza',
+  Success: 'Byagenze neza',
+  'Total Outstanding': 'Amadeni Yose Asigaye',
+  'Money still owed': 'Amafaranga akiberewemo',
+  'Customers With Debt': 'Abafite Amadeni',
+  'Customers with balance': 'Abakiriya bafite amadeni',
+  'Total Paid': 'Ayishyuwe Yose',
+  'Collected payments': 'Amafaranga amaze kwakirwa',
+  'Total Sales Value': "Agaciro k'Ibyagurishijwe Byose",
+  'Sales across customers': 'Ibicuruzwa byose byagurishijwe',
+  'Find Customers': 'Shakisha Abakiriya',
+  'Search by customer name or phone number.':
+    'Shakisha ku izina cyangwa nimero ya terefone.',
+  'Search customers': 'Shakisha abakiriya',
+  'Search name or phone...': 'Shakisha izina cyangwa terefone...',
+  'Customer status': "Imiterere y'umukiriya",
+  'All Customers': 'Abakiriya Bose',
+  'Fully Paid': 'Bishyuwe Byose',
+  'Customer Debt': "Amadeni y'Abakiriya",
+  customer: 'umukiriya',
+  customers: 'abakiriya',
+  shown: 'yagaragajwe',
+  'Outstanding accounts': 'Amakonti afite amadeni',
+  'Paid accounts': 'Amakonti yishyuwe',
+  'All accounts': 'Amakonti yose',
+  'Loading debt information...': "Birimo gushakisha amakuru y'amadeni...",
+  'No matching debt accounts': "Nta mukiriya uhuye n'ibyo ushakishije",
+  'There are no customers matching the current search and filter.':
+    "Nta bakiriya bahuye n'ibyo ushakishije cyangwa akayunguruzo.",
+  'Reset Filters': 'Gusubiramo Akayunguruzo',
+  Customer: 'Umukiriya',
+  Sales: 'Ibyagurishijwe',
+  'Total Sales': 'Amafaranga Yose',
+  Paid: 'Ayishyuwe',
+  Actions: 'Ibikorwa',
+  'No phone number': 'Nta nimero ya terefone',
+  History: 'Amateka',
+  'Record Payment': 'Andika Ubwishyu',
+  Cancel: 'Kureka',
+  'Saving...': 'Birimo kubikwa...',
+  'Selected Sale': 'Igurisha Ryatoranyijwe',
+  'Sale Date': 'Itariki yo Kugurisha',
+  'Sale Total': 'Yose Hamwe',
+  'Payment Details': "Amakuru y'Ubwishyu",
+  'Enter the amount received and payment information.':
+    "Injiza amafaranga yakiriwe n'andi makuru y'ubwishyu.",
+  'Payment Amount': 'Amafaranga Yishyuwe',
+  Maximum: 'Ntarengwa',
+  'Enter payment amount': 'Andika amafaranga yishyuwe',
+  'Enter an amount up to the current outstanding balance.':
+    'Injiza amafaranga atarenze asigaye ku ideni.',
+  'Payment Date': "Itariki y'Ubwishyu",
+  'Date & time': "Itariki n'isaha",
+  Notes: 'Ibisobanuro',
+  '(optional)': '(ubishatse)',
+  'Extra information': "Amakuru y'inyongera",
+  'Add an optional note about this payment...':
+    "Andika ibisobanuro by'inyongera kuri ubu bwishyu...",
+  'For example: cash received, bank transfer, or payment reference.':
+    'Urugero: amafaranga mu ntoki, kuri banki, cyangwa Mobile Money.',
+  'Payment to Record': 'Amafaranga agiye kwandikwa',
+  'Payment History': "Amateka y'Ubwishyu",
+  Close: 'Funga',
+  Payments: 'Ubwishyu',
+  'Sales & Outstanding Balances': "Ibyagurishijwe n'Amadeni Asigaye",
+  'Every sale linked to this customer.':
+    'Buri gurisha rifitanye isano nuyu mukiriya.',
+  'No sales found for this customer.':
+    'Nta bicuruzwa byagurishijwe kuri uyu mukiriya.',
+  Date: 'Itariki',
+  Due: 'Asigaye',
+  Status: 'Imiterere',
+  Action: 'Igikorwa',
+  'Recorded payments and corrections.':
+    'Ubwishyu bwanditswe hamwe nubwakosowe.',
+  'No payments recorded for this customer.':
+    'Nta bwishyu bwanditswe kuri uyu mukiriya.',
+  Amount: 'Amafaranga',
+  Type: 'Ubwoko',
+  Correct: 'Kosora',
+  'Initial Payment': 'Ubwishyu bwa Mbere',
+  'Final Payment': 'Ubwishyu bwa Nyuma',
+  'Installment Payment': 'Ubwishyu mu Byiciro',
+  Payment: 'Ubwishyu',
+  'Correct Payment': 'Gukosora Ubwishyu',
+  'Correct the amount, date, or notes for this payment.':
+    'Kosora amafaranga, itariki, cyangwa ibisobanuro byubu bwishyu.',
+  'Original Amount': 'Amafaranga yari Yanditswe',
+  'Corrected Amount': 'Amafaranga Mashya Yakosowe',
+  'Save Correction': 'Bika Ibyakosowe',
+  'Payment details to correct': "Amakuru y'ubwishyu agiye gukosorwa",
+  'New amount matches original': "Amafaranga angana n'aya mbere",
+  'Increase by': 'Kongeraho',
+  'Decrease by': 'Kugabanyaho',
+  Difference: 'Itandukaniro',
+  'Enter corrected amount': 'Injiza amafaranga yakosowe',
+  'Original Record': 'Inyandiko yambere',
+  'New Value': 'Agaciro gashya',
+  'Payment recorded successfully.': 'Ubwishyu bwanditswe neza.',
+  'Payment corrected successfully.': 'Ubwishyu bwakosowe neza.',
+  'Payment amount must be greater than zero.':
+    'Amafaranga yishyurwa agomba kurenga zeru.',
+  'Corrected amount must be greater than zero.':
+    'Amafaranga yakosowe agomba kurenga zeru.',
+  'Payment cannot exceed the outstanding debt of':
+    'Amafaranga ntashobora kurenga ideni risigaye rya',
+  'Payment for': 'Ubwishyu bwa',
+  'Record a customer payment.': "Andika ubwishyu bw'umukiriya.",
+  "'s sales and payments": " - Ibyagurishijwe n'Ubwishyu",
+}
+
+function translateDebts(text: string, isRw: boolean) {
+  if (!isRw) return text
+  return Object.prototype.hasOwnProperty.call(DEBTS_TRANSLATIONS, text)
+    ? DEBTS_TRANSLATIONS[text]
+    : text
+}
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-RW', {
     minimumFractionDigits: 0,
@@ -81,6 +210,11 @@ function getPaymentStatusLabel(status: string) {
 }
 
 export default function DebtsPage() {
+  const { t } = useAppPreferences()
+
+  const isRw = t('inventory').trim().toLowerCase() !== 'inventory'
+  const tx = (text: string) => translateDebts(text, isRw)
+
   const [customers, setCustomers] = useState<Customer[]>([])
   const [sales, setSales] = useState<Sale[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
@@ -92,43 +226,30 @@ export default function DebtsPage() {
   const [success, setSuccess] = useState('')
 
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'debt' | 'paid'
-  >('debt')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'debt' | 'paid'>('debt')
 
   const [recordOpen, setRecordOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [correctOpen, setCorrectOpen] = useState(false)
 
-  const [selectedCustomer, setSelectedCustomer] =
-    useState<Customer | null>(null)
-
-  const [selectedSale, setSelectedSale] =
-    useState<Sale | null>(null)
-
-  const [selectedPayment, setSelectedPayment] =
-    useState<Payment | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
 
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
   const [paymentNotes, setPaymentNotes] = useState('')
 
-  const [correctedAmount, setCorrectedAmount] =
-    useState('')
+  const [correctedAmount, setCorrectedAmount] = useState('')
   const [correctedDate, setCorrectedDate] = useState('')
-  const [correctedNotes, setCorrectedNotes] =
-    useState('')
+  const [correctedNotes, setCorrectedNotes] = useState('')
 
   async function loadData() {
     try {
       setLoading(true)
       setError('')
 
-      const [
-        customersResult,
-        salesResult,
-        paymentsResult,
-      ] = await Promise.all([
+      const [customersResult, salesResult, paymentsResult] = await Promise.all([
         supabase
           .from('customers')
           .select('id, name, phone, active')
@@ -153,32 +274,15 @@ export default function DebtsPage() {
           }),
       ])
 
-      if (customersResult.error) {
-        throw customersResult.error
-      }
+      if (customersResult.error) throw customersResult.error
+      if (salesResult.error) throw salesResult.error
+      if (paymentsResult.error) throw paymentsResult.error
 
-      if (salesResult.error) {
-        throw salesResult.error
-      }
-
-      if (paymentsResult.error) {
-        throw paymentsResult.error
-      }
-
-      setCustomers(
-        (customersResult.data || []) as Customer[],
-      )
-
-      setSales(
-        (salesResult.data || []) as Sale[],
-      )
-
-      setPayments(
-        (paymentsResult.data || []) as Payment[],
-      )
+      setCustomers((customersResult.data || []) as Customer[])
+      setSales((salesResult.data || []) as Sale[])
+      setPayments((paymentsResult.data || []) as Payment[])
     } catch (err) {
       console.error('Debts load error:', err)
-
       setError(
         err instanceof Error
           ? err.message
@@ -191,45 +295,30 @@ export default function DebtsPage() {
 
   useEffect(() => {
     loadData()
-
-    setPaymentDate(
-      new Date().toISOString().slice(0, 16),
-    )
+    setPaymentDate(new Date().toISOString().slice(0, 16))
   }, [])
 
   const debtRows = useMemo<DebtRow[]>(() => {
     return customers.map((customer) => {
       const customerSales = sales.filter(
-        (sale) =>
-          sale.customer_id === customer.id,
+        (sale) => sale.customer_id === customer.id,
       )
 
-      const totalRevenue =
-        customerSales.reduce(
-          (sum, sale) =>
-            sum +
-            (Number(sale.total_revenue) || 0),
-          0,
-        )
+      const totalRevenue = customerSales.reduce(
+        (sum, sale) => sum + (Number(sale.total_revenue) || 0),
+        0,
+      )
 
-      const totalPaid =
-        customerSales.reduce(
-          (sum, sale) =>
-            sum +
-            (Number(sale.amount_paid) || 0),
-          0,
-        )
+      const totalPaid = customerSales.reduce(
+        (sum, sale) => sum + (Number(sale.amount_paid) || 0),
+        0,
+      )
 
-      const totalDue =
-        customerSales.reduce(
-          (sum, sale) =>
-            sum +
-            Math.max(
-              Number(sale.amount_due) || 0,
-              0,
-            ),
-          0,
-        )
+      const totalDue = customerSales.reduce(
+        (sum, sale) =>
+          sum + Math.max(Number(sale.amount_due) || 0, 0),
+        0,
+      )
 
       return {
         customer,
@@ -247,92 +336,70 @@ export default function DebtsPage() {
     return debtRows.filter((row) => {
       const matchesSearch =
         !query ||
-        row.customer.name
-          .toLowerCase()
-          .includes(query) ||
-        row.customer.phone
-          ?.toLowerCase()
-          .includes(query)
+        row.customer.name.toLowerCase().includes(query) ||
+        row.customer.phone?.toLowerCase().includes(query)
 
       const matchesStatus =
         statusFilter === 'all' ||
-        (statusFilter === 'debt' &&
-          row.totalDue > 0) ||
-        (statusFilter === 'paid' &&
-          row.totalDue <= 0)
+        (statusFilter === 'debt' && row.totalDue > 0) ||
+        (statusFilter === 'paid' && row.totalDue <= 0)
 
       return matchesSearch && matchesStatus
     })
-  }, [
-    debtRows,
-    search,
-    statusFilter,
-  ])
+  }, [debtRows, search, statusFilter])
 
-  const customersWithDebt =
-    debtRows.filter(
-      (row) => row.totalDue > 0,
-    ).length
+  const customersWithDebt = debtRows.filter((row) => row.totalDue > 0).length
 
-  const totalDebt = debtRows.reduce(
-    (sum, row) => sum + row.totalDue,
-    0,
-  )
-
-  const totalPaid = debtRows.reduce(
-    (sum, row) => sum + row.totalPaid,
-    0,
-  )
-
+  const totalDebt = debtRows.reduce((sum, row) => sum + row.totalDue, 0)
+  const totalPaid = debtRows.reduce((sum, row) => sum + row.totalPaid, 0)
   const totalSalesValue = debtRows.reduce(
-    (sum, row) =>
-      sum + row.totalRevenue,
+    (sum, row) => sum + row.totalRevenue,
     0,
   )
 
   const customerSales = selectedCustomer
-    ? sales.filter(
-        (sale) =>
-          sale.customer_id ===
-          selectedCustomer.id,
-      )
+    ? sales.filter((sale) => sale.customer_id === selectedCustomer.id)
     : []
 
-  const customerDebtSales =
-    customerSales.filter(
-      (sale) =>
-        Number(sale.amount_due) > 0,
-    )
+  const customerDebtSales = customerSales.filter(
+    (sale) => Number(sale.amount_due) > 0,
+  )
 
-  const selectedCustomerDebt =
-    customerDebtSales.reduce(
-      (sum, sale) =>
-        sum +
-        (Number(sale.amount_due) || 0),
-      0,
-    )
+  const selectedCustomerDebt = customerDebtSales.reduce(
+    (sum, sale) => sum + (Number(sale.amount_due) || 0),
+    0,
+  )
 
-  function openRecordPayment(
-    customer: Customer,
-    sale: Sale,
-  ) {
+  const correctingSale = useMemo(() => {
+    if (!selectedPayment) return null
+    return sales.find((s) => s.id === selectedPayment.sale_id) || null
+  }, [selectedPayment, sales])
+
+  const correctingCustomer = useMemo(() => {
+    if (!selectedPayment) return null
+    return (
+      customers.find((c) => c.id === selectedPayment.customer_id) ||
+      (correctingSale
+        ? customers.find((c) => c.id === correctingSale.customer_id)
+        : null) ||
+      null
+    )
+  }, [selectedPayment, correctingSale, customers])
+
+  /* ---------------- Modal Opening & Seamless Switching ---------------- */
+
+  function openRecordPayment(customer: Customer, sale: Sale) {
+    // Immediately close history modal to eliminate any overlay collision
+    setHistoryOpen(false)
+
     setSelectedCustomer(customer)
     setSelectedSale(sale)
 
     setPaymentAmount(
-      Number(sale.amount_due) > 0
-        ? String(sale.amount_due)
-        : '',
+      Number(sale.amount_due) > 0 ? String(sale.amount_due) : '',
     )
-
-    setPaymentDate(
-      new Date()
-        .toISOString()
-        .slice(0, 16),
-    )
-
+    setPaymentDate(new Date().toISOString().slice(0, 16))
     setPaymentNotes('')
-
     setError('')
     setSuccess('')
     setRecordOpen(true)
@@ -340,7 +407,6 @@ export default function DebtsPage() {
 
   function closeRecordPayment() {
     if (saving) return
-
     setRecordOpen(false)
     setSelectedSale(null)
     setSelectedCustomer(null)
@@ -359,25 +425,16 @@ export default function DebtsPage() {
     setSelectedCustomer(null)
   }
 
-  function openCorrectPayment(
-    payment: Payment,
-  ) {
+  function openCorrectPayment(payment: Payment) {
+    // Immediately close history modal to prevent overlap
+    setHistoryOpen(false)
+
     setSelectedPayment(payment)
-
-    setCorrectedAmount(
-      String(payment.amount),
-    )
-
+    setCorrectedAmount(String(payment.amount))
     setCorrectedDate(
-      new Date(payment.payment_date)
-        .toISOString()
-        .slice(0, 16),
+      new Date(payment.payment_date).toISOString().slice(0, 16),
     )
-
-    setCorrectedNotes(
-      payment.notes || '',
-    )
-
+    setCorrectedNotes(payment.notes || '')
     setError('')
     setSuccess('')
     setCorrectOpen(true)
@@ -385,7 +442,6 @@ export default function DebtsPage() {
 
   function closeCorrectPayment() {
     if (saving) return
-
     setCorrectOpen(false)
     setSelectedPayment(null)
     setCorrectedAmount('')
@@ -393,28 +449,22 @@ export default function DebtsPage() {
     setCorrectedNotes('')
   }
 
-  async function handleRecordPayment(
-    event: FormEvent,
-  ) {
-    event.preventDefault()
+  /* ---------------- Form Submissions (Automatic Closing) ---------------- */
 
+  async function handleRecordPayment(event: FormEvent) {
+    event.preventDefault()
     if (!selectedSale) return
 
     const amount = Number(paymentAmount)
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError(
-        'Payment amount must be greater than zero.',
-      )
+      setError(tx('Payment amount must be greater than zero.'))
       return
     }
 
-    if (
-      amount >
-      Number(selectedSale.amount_due)
-    ) {
+    if (amount > Number(selectedSale.amount_due)) {
       setError(
-        `Payment cannot exceed the outstanding debt of ${formatMoney(
+        `${tx('Payment cannot exceed the outstanding debt of')} ${formatMoney(
           Number(selectedSale.amount_due),
         )} RWF.`,
       )
@@ -426,67 +476,48 @@ export default function DebtsPage() {
       setError('')
       setSuccess('')
 
-      const { error: rpcError } =
-        await supabase.rpc(
-          'record_sale_payment_18139',
-          {
-            p_sale_id: selectedSale.id,
-            p_amount: amount,
-            p_payment_date:
-              paymentDate
-                ? new Date(
-                    paymentDate,
-                  ).toISOString()
-                : new Date().toISOString(),
-            p_notes:
-              paymentNotes.trim() || null,
-          },
-        )
-
-      if (rpcError) {
-        throw rpcError
-      }
-
-      await loadData()
-
-      setSuccess(
-        'Payment recorded successfully.',
+      const { error: rpcError } = await supabase.rpc(
+        'record_sale_payment',
+        {
+          p_sale_id: selectedSale.id,
+          p_amount: amount,
+          p_payment_date: paymentDate
+            ? new Date(paymentDate).toISOString()
+            : new Date().toISOString(),
+          p_notes: paymentNotes.trim() || null,
+        },
       )
 
+      if (rpcError) throw rpcError
+
+      await loadData()
+      setSuccess(tx('Payment recorded successfully.'))
+
+      // Cleanly close ALL modals automatically
       setRecordOpen(false)
+      setHistoryOpen(false)
       setSelectedSale(null)
       setSelectedCustomer(null)
       setPaymentAmount('')
       setPaymentNotes('')
     } catch (err) {
-      console.error(
-        'Record payment error:',
-        err,
-      )
-
+      console.error('Record payment error:', err)
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to record payment.',
+        err instanceof Error ? err.message : 'Failed to record payment.',
       )
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleCorrectPayment(
-    event: FormEvent,
-  ) {
+  async function handleCorrectPayment(event: FormEvent) {
     event.preventDefault()
-
     if (!selectedPayment) return
 
     const amount = Number(correctedAmount)
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError(
-        'Corrected amount must be greater than zero.',
-      )
+      setError(tx('Corrected amount must be greater than zero.'))
       return
     }
 
@@ -495,49 +526,31 @@ export default function DebtsPage() {
       setError('')
       setSuccess('')
 
-      const { error: rpcError } =
-        await supabase.rpc(
-          'correct_sale_payment',
-          {
-            p_payment_id:
-              selectedPayment.id,
-            p_new_amount: amount,
-            p_payment_date:
-              correctedDate
-                ? new Date(
-                    correctedDate,
-                  ).toISOString()
-                : null,
-            p_notes:
-              correctedNotes.trim() || null,
-          },
-        )
+      const { error: rpcError } = await supabase.rpc('correct_sale_payment', {
+        p_payment_id: selectedPayment.id,
+        p_new_amount: amount,
+        p_payment_date: correctedDate
+          ? new Date(correctedDate).toISOString()
+          : null,
+        p_notes: correctedNotes.trim() || null,
+      })
 
-      if (rpcError) {
-        throw rpcError
-      }
+      if (rpcError) throw rpcError
 
       await loadData()
+      setSuccess(tx('Payment corrected successfully.'))
 
-      setSuccess(
-        'Payment corrected successfully.',
-      )
-
+      // Cleanly close ALL modals automatically
       setCorrectOpen(false)
+      setHistoryOpen(false)
       setSelectedPayment(null)
       setCorrectedAmount('')
       setCorrectedDate('')
       setCorrectedNotes('')
     } catch (err) {
-      console.error(
-        'Correct payment error:',
-        err,
-      )
-
+      console.error('Correct payment error:', err)
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to correct payment.',
+        err instanceof Error ? err.message : 'Failed to correct payment.',
       )
     } finally {
       setSaving(false)
@@ -555,16 +568,17 @@ export default function DebtsPage() {
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 backdrop-blur">
               <Icon name="wallet" size={15} />
-              Customer Credit Control
+              {tx('Customer Credit Control')}
             </div>
 
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Debts
+              {tx('Debts')}
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Track customer balances, record payments,
-              and keep every payment history organized.
+              {tx(
+                'Track customer balances, record payments, and keep every payment history organized.',
+              )}
             </p>
           </div>
 
@@ -575,7 +589,7 @@ export default function DebtsPage() {
 
             <div>
               <p className="text-xs font-medium text-slate-400">
-                Outstanding
+                {tx('Outstanding')}
               </p>
 
               <p className="text-xl font-black text-white">
@@ -594,13 +608,8 @@ export default function DebtsPage() {
           </div>
 
           <div className="flex-1">
-            <p className="font-semibold">
-              Something went wrong
-            </p>
-
-            <p className="mt-0.5">
-              {error}
-            </p>
+            <p className="font-semibold">{tx('Something went wrong')}</p>
+            <p className="mt-0.5">{error}</p>
           </div>
         </div>
       )}
@@ -612,13 +621,8 @@ export default function DebtsPage() {
           </div>
 
           <div>
-            <p className="font-semibold">
-              Success
-            </p>
-
-            <p className="mt-0.5">
-              {success}
-            </p>
+            <p className="font-semibold">{tx('Success')}</p>
+            <p className="mt-0.5">{success}</p>
           </div>
         </div>
       )}
@@ -626,35 +630,35 @@ export default function DebtsPage() {
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          label="Total Outstanding"
+          label={tx('Total Outstanding')}
           value={`${formatMoney(totalDebt)} RWF`}
           icon="warning"
           accent="amber"
-          subtitle="Money still owed"
+          subtitle={tx('Money still owed')}
         />
 
         <SummaryCard
-          label="Customers With Debt"
+          label={tx('Customers With Debt')}
           value={String(customersWithDebt)}
           icon="users"
           accent="indigo"
-          subtitle="Customers with balance"
+          subtitle={tx('Customers with balance')}
         />
 
         <SummaryCard
-          label="Total Paid"
+          label={tx('Total Paid')}
           value={`${formatMoney(totalPaid)} RWF`}
           icon="check"
           accent="emerald"
-          subtitle="Collected payments"
+          subtitle={tx('Collected payments')}
         />
 
         <SummaryCard
-          label="Total Sales Value"
+          label={tx('Total Sales Value')}
           value={`${formatMoney(totalSalesValue)} RWF`}
           icon="money"
           accent="blue"
-          subtitle="Sales across customers"
+          subtitle={tx('Sales across customers')}
         />
       </div>
 
@@ -662,18 +666,18 @@ export default function DebtsPage() {
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-5">
         <div className="mb-4 flex flex-col gap-1">
           <h2 className="text-base font-bold text-gray-900 dark:text-white">
-            Find Customers
+            {tx('Find Customers')}
           </h2>
 
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Search by customer name or phone number.
+            {tx('Search by customer name or phone number.')}
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[1fr_240px]">
           <div className="relative">
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Search customers
+              {tx('Search customers')}
             </label>
 
             <div className="relative">
@@ -684,10 +688,8 @@ export default function DebtsPage() {
               <input
                 type="text"
                 value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
-                placeholder="Search name or phone..."
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={tx('Search name or phone...')}
                 className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </div>
@@ -695,259 +697,193 @@ export default function DebtsPage() {
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Customer status
+              {tx('Customer status')}
             </label>
 
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(
-                  event.target.value as
-                    | 'all'
-                    | 'debt'
-                    | 'paid',
-                )
+                setStatusFilter(event.target.value as 'all' | 'debt' | 'paid')
               }
               className="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
             >
-              <option value="debt">
-                Customers With Debt
-              </option>
-
-              <option value="all">
-                All Customers
-              </option>
-
-              <option value="paid">
-                Fully Paid
-              </option>
+              <option value="debt">{tx('Customers With Debt')}</option>
+              <option value="all">{tx('All Customers')}</option>
+              <option value="paid">{tx('Fully Paid')}</option>
             </select>
           </div>
         </div>
       </section>
 
-      {/* Debt table */}
+      {/* Debt Table - Compact & Scrollable */}
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <div className="border-b border-gray-200 px-5 py-5 dark:border-gray-800">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
-                  <Icon name="users" size={18} />
-                </div>
-
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Customer Debt
-                </h2>
+        <div className="border-b border-gray-200 px-4 py-3.5 dark:border-gray-800 sm:px-5">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
+                <Icon name="users" size={16} />
               </div>
 
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {filteredRows.length} customer
-                {filteredRows.length === 1
-                  ? ''
-                  : 's'} shown
-              </p>
+              <div>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  {tx('Customer Debt')}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {filteredRows.length}{' '}
+                  {filteredRows.length === 1 ? tx('customer') : tx('customers')}{' '}
+                  {tx('shown')}
+                </p>
+              </div>
             </div>
 
-            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
               {statusFilter === 'debt'
-                ? 'Outstanding accounts'
+                ? tx('Outstanding accounts')
                 : statusFilter === 'paid'
-                  ? 'Paid accounts'
-                  : 'All accounts'}
+                  ? tx('Paid accounts')
+                  : tx('All accounts')}
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex min-h-[320px] items-center justify-center p-8">
+          <div className="flex min-h-[260px] items-center justify-center p-8">
             <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-900/30">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600 dark:border-indigo-900 dark:border-t-indigo-400" />
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/30">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600 dark:border-indigo-900 dark:border-t-indigo-400" />
               </div>
 
-              <p className="mt-4 text-sm font-medium text-gray-600 dark:text-gray-300">
-                Loading debt information...
+              <p className="mt-3 text-xs font-medium text-gray-600 dark:text-gray-300">
+                {tx('Loading debt information...')}
               </p>
             </div>
           </div>
         ) : filteredRows.length === 0 ? (
-          <div className="flex min-h-[320px] items-center justify-center p-8">
+          <div className="flex min-h-[260px] items-center justify-center p-6">
             <div className="max-w-sm text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-                <Icon name="check" size={28} />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                <Icon name="check" size={24} />
               </div>
 
-              <h3 className="mt-5 text-lg font-bold text-gray-900 dark:text-white">
-                No matching debt accounts
+              <h3 className="mt-4 text-base font-bold text-gray-900 dark:text-white">
+                {tx('No matching debt accounts')}
               </h3>
 
-              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                There are no customers matching the
-                current search and filter.
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                {tx(
+                  'There are no customers matching the current search and filter.',
+                )}
               </p>
 
-              {(search ||
-                statusFilter !== 'debt') && (
+              {(search || statusFilter !== 'debt') && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearch('')
                     setStatusFilter('debt')
                   }}
-                  className="mt-4 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="mt-3.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
                 >
-                  Reset Filters
+                  {tx('Reset Filters')}
                 </button>
               )}
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full text-left text-sm">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+          <div className="max-h-[460px] overflow-auto overscroll-contain">
+            <table className="min-w-[950px] w-full text-left text-xs">
+              <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/95 font-semibold uppercase tracking-wider text-gray-600 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 dark:text-gray-400">
                 <tr>
-                  <th className="px-5 py-3.5 font-semibold">
-                    Customer
-                  </th>
-
-                  <th className="px-5 py-3.5 font-semibold">
-                    Sales
-                  </th>
-
-                  <th className="px-5 py-3.5 font-semibold">
-                    Total Sales
-                  </th>
-
-                  <th className="px-5 py-3.5 font-semibold">
-                    Paid
-                  </th>
-
-                  <th className="px-5 py-3.5 font-semibold">
-                    Outstanding
-                  </th>
-
-                  <th className="px-5 py-3.5 text-right font-semibold">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3">{tx('Customer')}</th>
+                  <th className="px-4 py-3">{tx('Sales')}</th>
+                  <th className="px-4 py-3">{tx('Total Sales')}</th>
+                  <th className="px-4 py-3">{tx('Paid')}</th>
+                  <th className="px-4 py-3">{tx('Outstanding')}</th>
+                  <th className="px-4 py-3 text-right">{tx('Actions')}</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
                 {filteredRows.map((row) => (
                   <tr
                     key={row.customer.id}
-                    className="group transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                    className="group transition hover:bg-gray-50/70 dark:hover:bg-gray-800/40"
                   >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-black text-white shadow-sm">
-                          {getInitials(
-                            row.customer.name,
-                          )}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-[11px] font-black text-white shadow-xs">
+                          {getInitials(row.customer.name)}
                         </div>
 
                         <div className="min-w-0">
-                          <p className="font-bold text-gray-900 dark:text-white">
+                          <p className="truncate font-bold text-gray-900 dark:text-white">
                             {row.customer.name}
                           </p>
 
-                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                            {row.customer.phone ||
-                              'No phone number'}
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {row.customer.phone || tx('No phone number')}
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <span className="inline-flex rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <td className="px-4 py-2.5">
+                      <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                         {row.salesCount}
                       </span>
                     </td>
 
-                    <td className="px-5 py-4 font-semibold text-gray-700 dark:text-gray-300">
-                      {formatMoney(
-                        row.totalRevenue,
-                      )}{' '}
-                      RWF
+                    <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-300">
+                      {formatMoney(row.totalRevenue)} RWF
                     </td>
 
-                    <td className="px-5 py-4 font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatMoney(
-                        row.totalPaid,
-                      )}{' '}
-                      RWF
+                    <td className="px-4 py-2.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatMoney(row.totalPaid)} RWF
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       {row.totalDue > 0 ? (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                          {formatMoney(
-                            row.totalDue,
-                          )}{' '}
-                          RWF
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                          {formatMoney(row.totalDue)} RWF
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                          <Icon
-                            name="check"
-                            size={13}
-                          />
-                          Paid
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          <Icon name="check" size={11} />
+                          {tx('Paid')}
                         </span>
                       )}
                     </td>
 
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-4 py-2.5">
+                      <div className="flex justify-end gap-1.5">
                         <button
                           type="button"
-                          onClick={() =>
-                            openHistory(
-                              row.customer,
-                            )
-                          }
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+                          onClick={() => openHistory(row.customer)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-900/20 dark:text-indigo-300"
                         >
-                          <Icon
-                            name="history"
-                            size={14}
-                          />
-                          History
+                          <Icon name="history" size={13} />
+                          {tx('History')}
                         </button>
 
                         {row.totalDue > 0 && (
                           <button
                             type="button"
                             onClick={() => {
-                              const firstDebtSale =
-                                sales.find(
-                                  (sale) =>
-                                    sale.customer_id ===
-                                      row.customer.id &&
-                                    Number(
-                                      sale.amount_due,
-                                    ) > 0,
-                                )
+                              const firstDebtSale = sales.find(
+                                (sale) =>
+                                  sale.customer_id === row.customer.id &&
+                                  Number(sale.amount_due) > 0,
+                              )
 
-                              if (
-                                firstDebtSale
-                              ) {
-                                openRecordPayment(
-                                  row.customer,
-                                  firstDebtSale,
-                                )
+                              if (firstDebtSale) {
+                                openRecordPayment(row.customer, firstDebtSale)
                               }
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow"
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-emerald-700"
                           >
-                            <Icon
-                              name="plus"
-                              size={14}
-                            />
-                            Record Payment
+                            <Icon name="plus" size={13} />
+                            {tx('Record Payment')}
                           </button>
                         )}
                       </div>
@@ -964,11 +900,11 @@ export default function DebtsPage() {
       <Modal
         open={recordOpen}
         onClose={closeRecordPayment}
-        title="Record Payment"
+        title={tx('Record Payment')}
         description={
           selectedCustomer
-            ? `Payment for ${selectedCustomer.name}`
-            : 'Record a customer payment.'
+            ? `${tx('Payment for')} ${selectedCustomer.name}`
+            : tx('Record a customer payment.')
         }
         footer={
           <div className="flex justify-end gap-3">
@@ -978,7 +914,7 @@ export default function DebtsPage() {
               disabled={saving}
               className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              Cancel
+              {tx('Cancel')}
             </button>
 
             <button
@@ -990,15 +926,12 @@ export default function DebtsPage() {
               {saving ? (
                 <>
                   <Spinner />
-                  Saving...
+                  {tx('Saving...')}
                 </>
               ) : (
                 <>
-                  <Icon
-                    name="check"
-                    size={16}
-                  />
-                  Record Payment
+                  <Icon name="check" size={16} />
+                  {tx('Record Payment')}
                 </>
               )}
             </button>
@@ -1015,15 +948,12 @@ export default function DebtsPage() {
             <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 via-white to-emerald-50/40 p-5 dark:border-gray-800 dark:from-gray-800/70 dark:via-gray-900 dark:to-emerald-950/10">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                  <Icon
-                    name="money"
-                    size={21}
-                  />
+                  <Icon name="money" size={21} />
                 </div>
 
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    Selected Sale
+                    {tx('Selected Sale')}
                   </p>
 
                   <p className="truncate font-bold text-gray-900 dark:text-white">
@@ -1034,27 +964,21 @@ export default function DebtsPage() {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <InfoBox
-                  label="Sale Date"
-                  value={formatDate(
-                    selectedSale.sale_date,
-                  )}
+                  label={tx('Sale Date')}
+                  value={formatDate(selectedSale.sale_date)}
                 />
 
                 <InfoBox
-                  label="Sale Total"
+                  label={tx('Sale Total')}
                   value={`${formatMoney(
-                    Number(
-                      selectedSale.total_revenue,
-                    ),
+                    Number(selectedSale.total_revenue),
                   )} RWF`}
                 />
 
                 <InfoBox
-                  label="Outstanding"
+                  label={tx('Outstanding')}
                   value={`${formatMoney(
-                    Number(
-                      selectedSale.amount_due,
-                    ),
+                    Number(selectedSale.amount_due),
                   )} RWF`}
                   valueClass="text-amber-600 dark:text-amber-400"
                 />
@@ -1066,19 +990,16 @@ export default function DebtsPage() {
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-black text-gray-900 dark:text-white">
-                    Payment Details
+                    {tx('Payment Details')}
                   </h3>
 
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Enter the amount received and payment information.
+                    {tx('Enter the amount received and payment information.')}
                   </p>
                 </div>
 
                 <div className="hidden h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 sm:flex">
-                  <Icon
-                    name="check"
-                    size={17}
-                  />
+                  <Icon name="check" size={17} />
                 </div>
               </div>
 
@@ -1087,31 +1008,20 @@ export default function DebtsPage() {
                 <div>
                   <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <label className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                      Payment Amount
+                      {tx('Payment Amount')}
                     </label>
 
                     <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
-                      <Icon
-                        name="warning"
-                        size={12}
-                      />
-                      Maximum:{' '}
-                      {formatMoney(
-                        Number(
-                          selectedSale.amount_due,
-                        ),
-                      )}{' '}
-                      RWF
+                      <Icon name="warning" size={12} />
+                      {tx('Maximum')}:{' '}
+                      {formatMoney(Number(selectedSale.amount_due))} RWF
                     </span>
                   </div>
 
                   <div className="group relative">
                     <div className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition group-focus-within:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:group-focus-within:bg-emerald-900/30">
-                        <Icon
-                          name="money"
-                          size={16}
-                        />
+                        <Icon name="money" size={16} />
                       </div>
 
                       <span className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
@@ -1123,11 +1033,9 @@ export default function DebtsPage() {
                       step="0.01"
                       value={paymentAmount}
                       onChange={(event) =>
-                        setPaymentAmount(
-                          event.target.value,
-                        )
+                        setPaymentAmount(event.target.value)
                       }
-                      placeholder="Enter payment amount"
+                      placeholder={tx('Enter payment amount')}
                       required
                       className="w-full rounded-2xl border border-gray-300 bg-gray-50 py-3.5 pl-16 pr-20 text-lg font-bold text-gray-900 outline-none transition placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:bg-gray-950"
                     />
@@ -1138,7 +1046,9 @@ export default function DebtsPage() {
                   </div>
 
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Enter an amount up to the current outstanding balance.
+                    {tx(
+                      'Enter an amount up to the current outstanding balance.',
+                    )}
                   </p>
                 </div>
 
@@ -1146,32 +1056,25 @@ export default function DebtsPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <label className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                      Payment Date
+                      {tx('Payment Date')}
                     </label>
 
                     <span className="text-xs text-gray-400">
-                      Date & time
+                      {tx('Date & time')}
                     </span>
                   </div>
 
                   <div className="relative group">
                     <div className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition group-focus-within:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:group-focus-within:bg-indigo-900/30">
-                        <Icon
-                          name="history"
-                          size={16}
-                        />
+                        <Icon name="history" size={16} />
                       </div>
                     </div>
 
                     <input
                       type="datetime-local"
                       value={paymentDate}
-                      onChange={(event) =>
-                        setPaymentDate(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setPaymentDate(event.target.value)}
                       required
                       className="w-full rounded-2xl border border-gray-300 bg-gray-50 py-3.5 pl-16 pr-4 text-sm font-semibold text-gray-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:bg-gray-950"
                     />
@@ -1182,42 +1085,41 @@ export default function DebtsPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <label className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                      Notes
+                      {tx('Notes')}
                       <span className="ml-1.5 font-normal text-gray-400">
-                        (optional)
+                        {tx('(optional)')}
                       </span>
                     </label>
 
                     <span className="text-xs text-gray-400">
-                      Extra information
+                      {tx('Extra information')}
                     </span>
                   </div>
 
                   <div className="relative group">
                     <div className="pointer-events-none absolute left-3 top-3.5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-500 transition group-focus-within:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:group-focus-within:bg-gray-700">
-                        <Icon
-                          name="info"
-                          size={16}
-                        />
+                        <Icon name="info" size={16} />
                       </div>
                     </div>
 
                     <textarea
                       value={paymentNotes}
                       onChange={(event) =>
-                        setPaymentNotes(
-                          event.target.value,
-                        )
+                        setPaymentNotes(event.target.value)
                       }
                       rows={4}
-                      placeholder="Add an optional note about this payment..."
+                      placeholder={tx(
+                        'Add an optional note about this payment...',
+                      )}
                       className="w-full resize-none rounded-2xl border border-gray-300 bg-gray-50 py-3.5 pl-16 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:bg-gray-950"
                     />
                   </div>
 
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    For example: cash received, bank transfer, or payment reference.
+                    {tx(
+                      'For example: cash received, bank transfer, or payment reference.',
+                    )}
                   </p>
                 </div>
               </div>
@@ -1228,22 +1130,16 @@ export default function DebtsPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                    Payment to Record
+                    {tx('Payment to Record')}
                   </p>
 
                   <p className="mt-1 text-lg font-black text-emerald-800 dark:text-emerald-200">
-                    {formatMoney(
-                      Number(paymentAmount) || 0,
-                    )}{' '}
-                    RWF
+                    {formatMoney(Number(paymentAmount) || 0)} RWF
                   </p>
                 </div>
 
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm dark:bg-gray-900 dark:text-emerald-400">
-                  <Icon
-                    name="check"
-                    size={20}
-                  />
+                  <Icon name="check" size={20} />
                 </div>
               </div>
             </div>
@@ -1255,10 +1151,10 @@ export default function DebtsPage() {
       <Modal
         open={historyOpen}
         onClose={closeHistory}
-        title="Payment History"
+        title={tx('Payment History')}
         description={
           selectedCustomer
-            ? `${selectedCustomer.name}'s sales and payments`
+            ? `${selectedCustomer.name}${tx("'s sales and payments")}`
             : undefined
         }
         footer={
@@ -1268,7 +1164,7 @@ export default function DebtsPage() {
               onClick={closeHistory}
               className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              Close
+              {tx('Close')}
             </button>
           </div>
         }
@@ -1276,21 +1172,18 @@ export default function DebtsPage() {
         {selectedCustomer && (
           <div className="space-y-6">
             {/* Customer hero */}
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-gradient-to-r from-indigo-50 to-white p-5 dark:border-gray-800 dark:from-indigo-950/40 dark:to-gray-900">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-black text-white shadow">
-                {getInitials(
-                  selectedCustomer.name,
-                )}
+            <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-gradient-to-r from-indigo-50 to-white p-4 dark:border-gray-800 dark:from-indigo-950/40 dark:to-gray-900">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-black text-white shadow">
+                {getInitials(selectedCustomer.name)}
               </div>
 
               <div className="min-w-0">
-                <p className="text-lg font-black text-gray-900 dark:text-white">
+                <p className="text-base font-black text-gray-900 dark:text-white">
                   {selectedCustomer.name}
                 </p>
 
-                <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                  {selectedCustomer.phone ||
-                    'No phone number'}
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {selectedCustomer.phone || tx('No phone number')}
                 </p>
               </div>
             </div>
@@ -1298,277 +1191,184 @@ export default function DebtsPage() {
             {/* Customer summary */}
             <div className="grid gap-3 sm:grid-cols-3">
               <MiniSummary
-                label="Total Sales"
-                value={String(
-                  customerSales.length,
-                )}
+                label={tx('Total Sales')}
+                value={String(customerSales.length)}
                 icon="sales"
               />
 
               <MiniSummary
-                label="Outstanding"
-                value={`${formatMoney(
-                  selectedCustomerDebt,
-                )} RWF`}
+                label={tx('Outstanding')}
+                value={`${formatMoney(selectedCustomerDebt)} RWF`}
                 icon="warning"
                 valueClass="text-amber-600 dark:text-amber-400"
               />
 
               <MiniSummary
-                label="Payments"
+                label={tx('Payments')}
                 value={String(
                   payments.filter(
                     (payment) =>
-                      payment.customer_id ===
-                      selectedCustomer.id,
+                      payment.customer_id === selectedCustomer.id,
                   ).length,
                 )}
                 icon="money"
               />
             </div>
 
-            {/* Sales / debt history */}
+            {/* Sales / debt history - Compact & Scrollable */}
             <div>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                    Sales & Outstanding Balances
-                  </h3>
-
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Every sale linked to this customer.
-                  </p>
-                </div>
+              <div className="mb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                  {tx('Sales & Outstanding Balances')}
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  {tx('Every sale linked to this customer.')}
+                </p>
               </div>
 
-              {customerSales.length ===
-              0 ? (
-                <EmptySection text="No sales found for this customer." />
+              {customerSales.length === 0 ? (
+                <EmptySection text={tx('No sales found for this customer.')} />
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-800">
-                  <table className="min-w-[900px] w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+                <div className="max-h-[240px] overflow-x-auto overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-800">
+                  <table className="min-w-[750px] w-full text-left text-xs">
+                    <thead className="sticky top-0 z-10 bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
                       <tr>
-                        <th className="px-4 py-3">
-                          Date
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Sale Total
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Paid
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Due
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Status
-                        </th>
-
-                        <th className="px-4 py-3 text-right">
-                          Action
-                        </th>
+                        <th className="px-3.5 py-2.5">{tx('Date')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Sale Total')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Paid')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Due')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Status')}</th>
+                        <th className="px-3.5 py-2.5 text-right">{tx('Action')}</th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                      {customerSales.map(
-                        (sale) => (
-                          <tr
-                            key={sale.id}
-                            className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                          >
-                            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                              {formatDate(
-                                sale.sale_date,
-                              )}
-                            </td>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {customerSales.map((sale) => (
+                        <tr
+                          key={sale.id}
+                          className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                        >
+                          <td className="px-3.5 py-2 text-gray-700 dark:text-gray-300">
+                            {formatDate(sale.sale_date)}
+                          </td>
 
-                            <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                              {formatMoney(
-                                Number(
-                                  sale.total_revenue,
-                                ),
-                              )}{' '}
-                              RWF
-                            </td>
+                          <td className="px-3.5 py-2 font-semibold text-gray-900 dark:text-white">
+                            {formatMoney(Number(sale.total_revenue))} RWF
+                          </td>
 
-                            <td className="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">
-                              {formatMoney(
-                                Number(
-                                  sale.amount_paid,
-                                ),
-                              )}{' '}
-                              RWF
-                            </td>
+                          <td className="px-3.5 py-2 font-semibold text-emerald-600 dark:text-emerald-400">
+                            {formatMoney(Number(sale.amount_paid))} RWF
+                          </td>
 
-                            <td className="px-4 py-3 font-bold text-amber-600 dark:text-amber-400">
-                              {formatMoney(
-                                Number(
-                                  sale.amount_due,
-                                ),
-                              )}{' '}
-                              RWF
-                            </td>
+                          <td className="px-3.5 py-2 font-bold text-amber-600 dark:text-amber-400">
+                            {formatMoney(Number(sale.amount_due))} RWF
+                          </td>
 
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold capitalize text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                                {getPaymentStatusLabel(
-                                  sale.payment_status,
-                                )}
-                              </span>
-                            </td>
+                          <td className="px-3.5 py-2">
+                            <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold capitalize text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                              {getPaymentStatusLabel(sale.payment_status)}
+                            </span>
+                          </td>
 
-                            <td className="px-4 py-3 text-right">
-                              {Number(
-                                sale.amount_due,
-                              ) > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openRecordPayment(
-                                      selectedCustomer,
-                                      sale,
-                                    )
-                                  }
-                                  className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
-                                >
-                                  Record Payment
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ),
-                      )}
+                          <td className="px-3.5 py-2 text-right">
+                            {Number(sale.amount_due) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openRecordPayment(selectedCustomer, sale)
+                                }
+                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-emerald-700"
+                              >
+                                {tx('Record Payment')}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
 
-            {/* Payment history */}
+            {/* Payment history - Compact & Scrollable */}
             <div>
-              <div className="mb-3">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                  Payment History
+              <div className="mb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                  {tx('Payment History')}
                 </h3>
-
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Recorded payments and corrections.
+                <p className="text-[11px] text-gray-400">
+                  {tx('Recorded payments and corrections.')}
                 </p>
               </div>
 
               {payments.filter(
-                (payment) =>
-                  payment.customer_id ===
-                  selectedCustomer.id,
+                (payment) => payment.customer_id === selectedCustomer.id,
               ).length === 0 ? (
-                <EmptySection text="No payments recorded for this customer." />
+                <EmptySection
+                  text={tx('No payments recorded for this customer.')}
+                />
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-800">
-                  <table className="min-w-[850px] w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+                <div className="max-h-[220px] overflow-x-auto overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-800">
+                  <table className="min-w-[700px] w-full text-left text-xs">
+                    <thead className="sticky top-0 z-10 bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
                       <tr>
-                        <th className="px-4 py-3">
-                          Date
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Amount
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Type
-                        </th>
-
-                        <th className="px-4 py-3">
-                          Notes
-                        </th>
-
-                        <th className="px-4 py-3 text-right">
-                          Action
-                        </th>
+                        <th className="px-3.5 py-2.5">{tx('Date')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Amount')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Type')}</th>
+                        <th className="px-3.5 py-2.5">{tx('Notes')}</th>
+                        <th className="px-3.5 py-2.5 text-right">{tx('Action')}</th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {payments
                         .filter(
                           (payment) =>
-                            payment.customer_id ===
-                            selectedCustomer.id,
+                            payment.customer_id === selectedCustomer.id,
                         )
                         .sort(
                           (a, b) =>
-                            new Date(
-                              b.payment_date,
-                            ).getTime() -
-                            new Date(
-                              a.payment_date,
-                            ).getTime(),
+                            new Date(b.payment_date).getTime() -
+                            new Date(a.payment_date).getTime(),
                         )
                         .map((payment) => (
                           <tr
                             key={payment.id}
                             className="transition hover:bg-gray-50 dark:hover:bg-gray-800/40"
                           >
-                            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                              {formatDateTime(
-                                payment.payment_date,
-                              )}
+                            <td className="px-3.5 py-2 text-gray-700 dark:text-gray-300">
+                              {formatDateTime(payment.payment_date)}
                             </td>
 
-                            <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
-                              {formatMoney(
-                                Number(
-                                  payment.amount,
-                                ),
-                              )}{' '}
-                              RWF
+                            <td className="px-3.5 py-2 font-bold text-emerald-600 dark:text-emerald-400">
+                              {formatMoney(Number(payment.amount))} RWF
                             </td>
 
-                            <td className="px-4 py-3">
+                            <td className="px-3.5 py-2">
                               <PaymentTypeBadge
-                                payment={
-                                  payment
-                                }
-                                allPayments={
-                                  payments.filter(
-                                    (item) =>
-                                      item.sale_id ===
-                                      payment.sale_id,
-                                  )
-                                }
-                                sale={
-                                  sales.find(
-                                    (sale) =>
-                                      sale.id ===
-                                      payment.sale_id,
-                                  )
-                                }
+                                payment={payment}
+                                allPayments={payments.filter(
+                                  (item) => item.sale_id === payment.sale_id,
+                                )}
+                                sale={sales.find(
+                                  (sale) => sale.id === payment.sale_id,
+                                )}
+                                isRw={isRw}
                               />
                             </td>
 
-                            <td className="max-w-[220px] truncate px-4 py-3 text-gray-600 dark:text-gray-400">
-                              {payment.notes ||
-                                '—'}
+                            <td className="max-w-[180px] truncate px-3.5 py-2 text-gray-500">
+                              {payment.notes || '—'}
                             </td>
 
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-3.5 py-2 text-right">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  openCorrectPayment(
-                                    payment,
-                                  )
-                                }
-                                className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                                onClick={() => openCorrectPayment(payment)}
+                                className="rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300"
                               >
-                                Correct
+                                {tx('Correct')}
                               </button>
                             </td>
                           </tr>
@@ -1586,8 +1386,8 @@ export default function DebtsPage() {
       <Modal
         open={correctOpen}
         onClose={closeCorrectPayment}
-        title="Correct Payment"
-        description="Correct the amount, date, or notes for this payment."
+        title={tx('Correct Payment')}
+        description={tx('Correct the amount, date, or notes for this payment.')}
         footer={
           <div className="flex justify-end gap-3">
             <button
@@ -1596,27 +1396,24 @@ export default function DebtsPage() {
               disabled={saving}
               className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              Cancel
+              {tx('Cancel')}
             </button>
 
             <button
               type="submit"
               form="correct-payment-form"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
             >
               {saving ? (
                 <>
                   <Spinner />
-                  Saving...
+                  {tx('Saving...')}
                 </>
               ) : (
                 <>
-                  <Icon
-                    name="check"
-                    size={16}
-                  />
-                  Save Correction
+                  <Icon name="check" size={16} />
+                  {tx('Save Correction')}
                 </>
               )}
             </button>
@@ -1629,79 +1426,173 @@ export default function DebtsPage() {
           className="space-y-5"
         >
           {selectedPayment && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900/50 dark:bg-blue-950/20">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
-                  <Icon
-                    name="edit"
-                    size={20}
-                  />
+            <>
+              {/* Context overview card */}
+              <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white p-4 dark:border-blue-900/40 dark:from-blue-950/40 dark:via-slate-900 dark:to-slate-900">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm dark:bg-blue-500">
+                      <Icon name="edit" size={18} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                        {tx('Payment details to correct')}
+                      </p>
+                      <h4 className="truncate text-sm font-black text-gray-900 dark:text-white">
+                        {correctingCustomer?.name || tx('Customer')}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-blue-200 bg-white/80 px-3 py-1.5 backdrop-blur dark:border-blue-900/50 dark:bg-gray-800/80">
+                    <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                      {tx('Original Record')}
+                    </p>
+                    <p className="text-xs font-black text-gray-900 dark:text-white">
+                      {formatMoney(Number(selectedPayment.amount))} RWF
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
-                    Original Amount
-                  </p>
-
-                  <p className="mt-1 text-xl font-black text-gray-900 dark:text-white">
-                    {formatMoney(
-                      Number(
-                        selectedPayment.amount,
-                      ),
-                    )}{' '}
-                    RWF
-                  </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-blue-200/60 pt-2.5 text-xs text-gray-600 dark:border-blue-900/40 dark:text-gray-300">
+                  <span className="inline-flex items-center gap-1 font-semibold">
+                    <Icon name="history" size={13} className="text-blue-500" />
+                    {formatDateTime(selectedPayment.payment_date)}
+                  </span>
+                  {selectedPayment.notes && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-700">•</span>
+                      <span className="truncate italic opacity-85">
+                        &ldquo;{selectedPayment.notes}&rdquo;
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-            </div>
+
+              {/* Input container */}
+              <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                {/* Corrected Amount Field */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-900 dark:text-white">
+                      {tx('Corrected Amount')}
+                    </label>
+
+                    {Number(correctedAmount) > 0 && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                          Number(correctedAmount) ===
+                          Number(selectedPayment.amount)
+                            ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                            : Number(correctedAmount) >
+                                Number(selectedPayment.amount)
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                        }`}
+                      >
+                        {Number(correctedAmount) ===
+                        Number(selectedPayment.amount) ? (
+                          tx('New amount matches original')
+                        ) : Number(correctedAmount) >
+                          Number(selectedPayment.amount) ? (
+                          <>
+                            {tx('Increase by')} +
+                            {formatMoney(
+                              Number(correctedAmount) -
+                                Number(selectedPayment.amount),
+                            )}{' '}
+                            RWF
+                          </>
+                        ) : (
+                          <>
+                            {tx('Decrease by')} -
+                            {formatMoney(
+                              Number(selectedPayment.amount) -
+                                Number(correctedAmount),
+                            )}{' '}
+                            RWF
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="group relative">
+                    <div className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                        <Icon name="money" size={14} />
+                      </div>
+                      <span className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
+                    </div>
+
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={correctedAmount}
+                      onChange={(event) =>
+                        setCorrectedAmount(event.target.value)
+                      }
+                      placeholder={tx('Enter corrected amount')}
+                      required
+                      className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-14 pr-16 text-base font-bold text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                    />
+
+                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-white px-2 py-1 text-[11px] font-black text-gray-500 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">
+                      RWF
+                    </div>
+                  </div>
+                </div>
+
+                {/* Corrected Date Field */}
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                    {tx('Payment Date')}
+                  </label>
+
+                  <div className="relative group">
+                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <Icon name="history" size={15} />
+                    </div>
+
+                    <input
+                      type="datetime-local"
+                      value={correctedDate}
+                      onChange={(event) =>
+                        setCorrectedDate(event.target.value)
+                      }
+                      required
+                      className="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pl-9 pr-3 text-xs font-semibold text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Notes Field */}
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                    {tx('Notes')}{' '}
+                    <span className="font-normal text-gray-400">
+                      {tx('(optional)')}
+                    </span>
+                  </label>
+
+                  <textarea
+                    value={correctedNotes}
+                    onChange={(event) =>
+                      setCorrectedNotes(event.target.value)
+                    }
+                    rows={2}
+                    placeholder={tx(
+                      'Add an optional note about this payment...',
+                    )}
+                    className="w-full resize-none rounded-xl border border-gray-300 bg-gray-50 p-2.5 text-xs text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                  />
+                </div>
+              </div>
+            </>
           )}
-
-          <Field label="Corrected Amount">
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={correctedAmount}
-              onChange={(event) =>
-                setCorrectedAmount(
-                  event.target.value,
-                )
-              }
-              required
-              className="input-style"
-            />
-          </Field>
-
-          <Field label="Payment Date">
-            <input
-              type="datetime-local"
-              value={correctedDate}
-              onChange={(event) =>
-                setCorrectedDate(
-                  event.target.value,
-                )
-              }
-              required
-              className="input-style"
-            />
-          </Field>
-
-          <Field
-            label="Notes"
-            optional
-          >
-            <textarea
-              value={correctedNotes}
-              onChange={(event) =>
-                setCorrectedNotes(
-                  event.target.value,
-                )
-              }
-              rows={3}
-              placeholder="Payment notes..."
-              className="input-style resize-none"
-            />
-          </Field>
         </form>
       </Modal>
     </main>
@@ -1766,10 +1657,7 @@ function SummaryCard({
         <div
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${styles[accent].icon}`}
         >
-          <Icon
-            name={icon}
-            size={21}
-          />
+          <Icon name={icon} size={21} />
         </div>
       </div>
     </div>
@@ -1790,22 +1678,13 @@ function MiniSummary({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-center gap-2">
-        <Icon
-          name={icon}
-          size={15}
-          className="text-gray-400"
-        />
-
+        <Icon name={icon} size={15} className="text-gray-400" />
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {label}
         </p>
       </div>
 
-      <p
-        className={`mt-2 text-xl font-black ${valueClass}`}
-      >
-        {value}
-      </p>
+      <p className={`mt-2 text-xl font-black ${valueClass}`}>{value}</p>
     </div>
   )
 }
@@ -1821,68 +1700,20 @@ function InfoBox({
 }) {
   return (
     <div className="rounded-xl bg-white p-3 dark:bg-gray-900">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        {label}
-      </p>
-
-      <p
-        className={`mt-1 text-sm font-bold ${valueClass}`}
-      >
-        {value}
-      </p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className={`mt-1 text-sm font-bold ${valueClass}`}>{value}</p>
     </div>
   )
 }
 
-function Field({
-  label,
-  hint,
-  optional = false,
-  children,
-}: {
-  label: string
-  hint?: string
-  optional?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-          {label}
-          {optional && (
-            <span className="ml-1 font-normal text-gray-400">
-              (optional)
-            </span>
-          )}
-        </label>
-
-        {hint && (
-          <span className="text-xs text-gray-400">
-            {hint}
-          </span>
-        )}
-      </div>
-
-      {children}
-    </div>
-  )
-}
-
-function EmptySection({
-  text,
-}: {
-  text: string
-}) {
+function EmptySection({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-gray-300 p-7 text-center dark:border-gray-700">
       <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-gray-800">
         <Icon name="info" size={19} />
       </div>
 
-      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-        {text}
-      </p>
+      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">{text}</p>
     </div>
   )
 }
@@ -1897,18 +1728,19 @@ function PaymentTypeBadge({
   payment,
   allPayments,
   sale,
+  isRw,
 }: {
   payment: Payment
   allPayments: Payment[]
   sale?: Sale
+  isRw: boolean
 }) {
-  if (
-    payment.notes ===
-    'Initial payment at sale creation'
-  ) {
+  const tx = (text: string) => translateDebts(text, isRw)
+
+  if (payment.notes === 'Initial payment at sale creation') {
     return (
       <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-        Initial Payment
+        {tx('Initial Payment')}
       </span>
     )
   }
@@ -1916,56 +1748,41 @@ function PaymentTypeBadge({
   if (!sale) {
     return (
       <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-        Payment
+        {tx('Payment')}
       </span>
     )
   }
 
-  const sorted = [...allPayments].sort(
-    (a, b) => {
-      const dateDifference =
-        new Date(
-          a.payment_date,
-        ).getTime() -
-        new Date(
-          b.payment_date,
-        ).getTime()
+  const sorted = [...allPayments].sort((a, b) => {
+    const dateDifference =
+      new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
 
-      if (dateDifference !== 0) {
-        return dateDifference
-      }
+    if (dateDifference !== 0) return dateDifference
 
-      return (
-        new Date(a.created_at).getTime() -
-        new Date(b.created_at).getTime()
-      )
-    },
-  )
+    return (
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+  })
 
   let cumulative = 0
 
   for (const item of sorted) {
-    cumulative +=
-      Number(item.amount) || 0
+    cumulative += Number(item.amount) || 0
 
     if (item.id === payment.id) {
-      const saleTotal =
-        Number(sale.total_revenue) || 0
+      const saleTotal = Number(sale.total_revenue) || 0
 
-      if (
-        saleTotal > 0 &&
-        cumulative >= saleTotal
-      ) {
+      if (saleTotal > 0 && cumulative >= saleTotal) {
         return (
           <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-            Final Payment
+            {tx('Final Payment')}
           </span>
         )
       }
 
       return (
         <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-          Installment Payment
+          {tx('Installment Payment')}
         </span>
       )
     }
@@ -1973,7 +1790,7 @@ function PaymentTypeBadge({
 
   return (
     <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-      Payment
+      {tx('Payment')}
     </span>
   )
 }

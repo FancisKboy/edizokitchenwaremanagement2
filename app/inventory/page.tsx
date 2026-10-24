@@ -1,239 +1,298 @@
-'use client';
+'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import Modal from '@/components/modal'
+import { useAppPreferences } from '@/app/providers'
 
-import { supabase } from '@/lib/supabase';
-import Modal from '@/components/modal';
-
-const PRODUCT_IMAGE_BUCKET = 'product-images';
+const PRODUCT_IMAGE_BUCKET = 'product-images'
 
 type Product = {
-  id: string;
-  name: string;
-  status?: string | null;
-};
+  id: string
+  name: string
+  status?: string | null
+}
 
 type ProductType = {
-  id: string;
-  product_id: string;
-  name: string;
-  description: string | null;
-  image_path: string | null;
-  minimum_stock: number;
-  status: string;
-};
+  id: string
+  product_id: string
+  name: string
+  description: string | null
+  image_path: string | null
+  minimum_stock: number
+  status: string
+}
 
 type Batch = {
-  id: string;
-  product_type_id: string;
-  batch_number: string;
-  received_at: string;
-  original_quantity: number;
-  remaining_quantity: number;
-  unit_cost: number;
-  attachment_path: string | null;
-  status: string;
-  created_at: string;
-};
+  id: string
+  product_type_id: string
+  batch_number: string
+  received_at: string
+  original_quantity: number
+  remaining_quantity: number
+  unit_cost: number
+  attachment_path: string | null
+  status: string
+  created_at: string
+}
 
 type InventoryRow = {
-  productType: ProductType;
-  product: Product | null;
-  batches: Batch[];
-  stock: number;
-  stockValue: number;
-};
+  productType: ProductType
+  product: Product | null
+  batches: Batch[]
+  stock: number
+  stockValue: number
+}
+
+/* =========================================================
+   TRANSLATIONS
+========================================================= */
+
+const INVENTORY_TRANSLATIONS: Record<string, string> = {
+  'Stock Control': 'Kugenzura Ububiko',
+  Inventory: 'Ububiko',
+  'Monitor your kitchenware stock, product types, batches and current inventory value.':
+    "Gukurikirana ibikoresho byo mu gikoni, amoko yabyo, amatsinda (batches) n'agaciro k'ububiko muri iki gihe.",
+  'Refresh Inventory': 'Vugurura Ububiko',
+  'Refreshing...': 'Biravugururwa...',
+  'Inventory could not load completely.': 'Ububiko ntabwo bwabonetse neza.',
+  'Try Again': 'Ongera Ugerageze',
+  Overview: 'Incamake',
+  'Stock at a Glance': 'Ububiko muri Rusange',
+  'Product Types': "Amoko y'Ibicuruzwa",
+  'Active types / kinds': 'Amoko akora',
+  'Units in Stock': 'Ingano mu Bubiko',
+  'Across all active batches': 'Muri za batch zose zikora',
+  'Stock Value': "Agaciro k'Ububiko",
+  'Current inventory cost value': "Agaciro k'ikiguzi cy'ububiko",
+  'Stock Attention': 'Ibyitonderwa mu Bubiko',
+  Available: 'Birahari',
+  'Low Stock': 'Biri Hafi Gushira',
+  'Out of Stock': 'Byashize',
+  'In Stock': 'Birahari',
+  'Find Stock': 'Shakisha Ububiko',
+  'Search & Filters': 'Gushakisha & Kuyungurura',
+  Search: 'Shakisha',
+  'Product, type, or batch...': 'Igicuruzwa, ubwoko, cyangwa batch...',
+  Product: 'Igicuruzwa',
+  'All Products': 'Ibicuruzwa Byose',
+  'Search product...': 'Shakisha igicuruzwa...',
+  'Stock Status': "Imiterere y'Ububiko",
+  'All Stock': 'Ububiko Bwose',
+  'Active filters:': 'Ibyatoranyijwe:',
+  'Clear all': 'Siba byose',
+  'Inventory Records': "Inyandiko z'Ububiko",
+  'Stock Overview': "Imiterere y'Ububiko",
+  Product_TH: 'Igicuruzwa',
+  'Type / Kind': 'Ubwoko',
+  Stock: 'Ububiko',
+  Minimum: 'Ibyibuze',
+  Batches: 'Amatsinda',
+  Status: 'Imiterere',
+  Action: 'Igikorwa',
+  'Unknown product': 'Igicuruzwa kitazwi',
+  units: 'ibice',
+  View: 'Reba',
+  'Loading inventory...': 'Gupakurura ububiko...',
+  'Reading products, types and batches.':
+    "Gusoma ibicuruzwa, amoko, n'amatsinda.",
+  'No inventory found': 'Nta bubiko bwabonetse',
+  'Try changing your search or stock filters. Active product types will appear here.':
+    "Gerageza guhindura ibyo washakishije. Amoko y'ibicuruzwa azagaragara hano.",
+  'Inventory Details': "Amakuru Arambuye y'Ububiko",
+  Close: 'Funga',
+  'Product Type / Kind': "Ubwoko bw'Igicuruzwa",
+  'No description has been added for this product type.':
+    'Nta bisobanuro byatanzwe kuri ubu bwoko.',
+  'Current Stock': 'Ububiko Buriho',
+  'Minimum Stock': 'Ububiko bwa Ngombwa',
+  'Batch Breakdown': 'Gusesengura Amatsinda',
+  'Stock by Batch': 'Ububiko kuri buri Tsinda',
+  'No batches found': 'Nta matsinda yabitswe',
+  'This product type does not have any batch records yet.':
+    "Ubu bwoko bw'igicuruzwa nta nyandiko za batch buragira.",
+  Batch: 'Itsinda (Batch)',
+  Received: 'Yakiriwe',
+  Original: 'Umwimerere',
+  Remaining: 'Ibisigaye',
+  'Unit Cost': "Igiciro cy'Igice",
+  'Remaining Value': "Agaciro k'Ibisigaye",
+  'No image available': 'Nta foto ihari',
+}
+
+function translateInventory(text: string, isRw: boolean): string {
+  if (!isRw) return text
+  return INVENTORY_TRANSLATIONS[text] || text
+}
 
 function toNumber(value: number | string | null | undefined) {
-  const number = Number(value ?? 0);
-
-  return Number.isFinite(number) ? number : 0;
+  const number = Number(value ?? 0)
+  return Number.isFinite(number) ? number : 0
 }
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-RW', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)
 }
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-RW', {
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(value)
 }
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value));
+  }).format(new Date(value))
 }
 
 function getPublicImageUrl(imagePath: string | null) {
-  if (!imagePath) return null;
-
+  if (!imagePath) return null
   return supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(imagePath)
-    .data.publicUrl;
+    .data.publicUrl
 }
 
-function getStockStatus(stock: number, minimumStock: number) {
+function getStockStatus(stock: number, minimumStock: number, isRw: boolean) {
   if (stock <= 0) {
     return {
-      label: 'Out of Stock',
+      label: translateInventory('Out of Stock', isRw),
       className:
         'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20',
       dotClass: 'bg-rose-500',
-    };
+    }
   }
 
   if (stock <= minimumStock) {
     return {
-      label: 'Low Stock',
+      label: translateInventory('Low Stock', isRw),
       className:
         'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
       dotClass: 'bg-amber-500',
-    };
+    }
   }
 
   return {
-    label: 'In Stock',
+    label: translateInventory('In Stock', isRw),
     className:
       'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
     dotClass: 'bg-emerald-500',
-  };
+  }
 }
 
 function getBatchStatusClass(status: string) {
-  const value = status.toLowerCase();
+  const value = status.toLowerCase()
 
   if (value.includes('finished')) {
-    return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+    return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
   }
 
   if (value.includes('low')) {
-    return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+    return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
   }
 
   if (value.includes('cancel')) {
-    return 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300';
+    return 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
   }
 
-  return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+  return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
 }
 
 function formatStatus(value: string) {
-  return value.replace(/_/g, ' ');
+  return value.replace(/_/g, ' ')
 }
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const { t } = useAppPreferences()
+  const isRw = t('inventory').trim().toLowerCase() !== 'inventory'
+  const tx = (text: string) => translateInventory(text, isRw)
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [products, setProducts] = useState<Product[]>([])
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
+  const [batches, setBatches] = useState<Batch[]>([])
 
-  const [search, setSearch] = useState('');
-  const [productFilter, setProductFilter] = useState('all');
-  const [stockFilter, setStockFilter] = useState('all');
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState('')
 
-  const [selectedRow, setSelectedRow] = useState<InventoryRow | null>(null);
+  const [search, setSearch] = useState('')
+  const [productFilter, setProductFilter] = useState('all')
+  const [stockFilter, setStockFilter] = useState('all')
 
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<InventoryRow | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const loadInventory = useCallback(async () => {
     try {
-      setError('');
+      setError('')
 
       const [productsResult, productTypesResult, batchesResult] =
         await Promise.all([
           supabase.from('products').select('id, name, status').order('name'),
-
           supabase
             .from('product_types')
             .select(
               'id, product_id, name, description, image_path, minimum_stock, status'
             )
             .order('name'),
-
           supabase
             .from('batches')
             .select(
               'id, product_type_id, batch_number, received_at, original_quantity, remaining_quantity, unit_cost, attachment_path, status, created_at'
             )
-            .order('received_at', {
-              ascending: true,
-            }),
-        ]);
+            .order('received_at', { ascending: true }),
+        ])
 
-      if (productsResult.error) {
-        throw productsResult.error;
-      }
+      if (productsResult.error) throw productsResult.error
+      if (productTypesResult.error) throw productTypesResult.error
+      if (batchesResult.error) throw batchesResult.error
 
-      if (productTypesResult.error) {
-        throw productTypesResult.error;
-      }
-
-      if (batchesResult.error) {
-        throw batchesResult.error;
-      }
-
-      setProducts((productsResult.data || []) as Product[]);
-
-      setProductTypes((productTypesResult.data || []) as ProductType[]);
-
-      setBatches((batchesResult.data || []) as Batch[]);
+      setProducts((productsResult.data || []) as Product[])
+      setProductTypes((productTypesResult.data || []) as ProductType[])
+      setBatches((batchesResult.data || []) as Batch[])
     } catch (err) {
-      console.error('Inventory load error:', err);
-
+      console.error('Inventory load error:', err)
       setError(
         err instanceof Error ? err.message : 'Failed to load inventory.'
-      );
+      )
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadInventory();
-  }, [loadInventory]);
+    loadInventory()
+  }, [loadInventory])
 
   const inventoryRows = useMemo<InventoryRow[]>(() => {
-    const productMap = new Map(
-      products.map((product) => [product.id, product])
-    );
-
-    const batchesByProductType = new Map<string, Batch[]>();
+    const productMap = new Map(products.map((product) => [product.id, product]))
+    const batchesByProductType = new Map<string, Batch[]>()
 
     for (const batch of batches) {
-      const existing = batchesByProductType.get(batch.product_type_id) || [];
-
-      existing.push(batch);
-
-      batchesByProductType.set(batch.product_type_id, existing);
+      const existing = batchesByProductType.get(batch.product_type_id) || []
+      existing.push(batch)
+      batchesByProductType.set(batch.product_type_id, existing)
     }
 
     return productTypes
       .filter((productType) => productType.status !== 'inactive')
       .map((productType) => {
-        const typeBatches = batchesByProductType.get(productType.id) || [];
-
+        const typeBatches = batchesByProductType.get(productType.id) || []
         const stock = typeBatches.reduce(
           (total, batch) =>
             total + Math.max(toNumber(batch.remaining_quantity), 0),
           0
-        );
+        )
 
         const stockValue = typeBatches.reduce((total, batch) => {
-          const quantity = Math.max(toNumber(batch.remaining_quantity), 0);
-
-          const unitCost = toNumber(batch.unit_cost);
-
-          return total + quantity * unitCost;
-        }, 0);
+          const quantity = Math.max(toNumber(batch.remaining_quantity), 0)
+          const unitCost = toNumber(batch.unit_cost)
+          return total + quantity * unitCost
+        }, 0)
 
         return {
           productType,
@@ -241,12 +300,12 @@ export default function InventoryPage() {
           batches: typeBatches,
           stock,
           stockValue,
-        };
-      });
-  }, [products, productTypes, batches]);
+        }
+      })
+  }, [products, productTypes, batches])
 
   const filteredRows = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+    const searchValue = search.trim().toLowerCase()
 
     return inventoryRows.filter((row) => {
       const matchesSearch =
@@ -255,10 +314,10 @@ export default function InventoryPage() {
         row.product?.name.toLowerCase().includes(searchValue) ||
         row.batches.some((batch) =>
           batch.batch_number.toLowerCase().includes(searchValue)
-        );
+        )
 
       const matchesProduct =
-        productFilter === 'all' || row.productType.product_id === productFilter;
+        productFilter === 'all' || row.productType.product_id === productFilter
 
       const matchesStock =
         stockFilter === 'all' ||
@@ -267,53 +326,55 @@ export default function InventoryPage() {
           row.stock > 0 &&
           row.stock <= row.productType.minimum_stock) ||
         (stockFilter === 'available' &&
-          row.stock > row.productType.minimum_stock);
+          row.stock > row.productType.minimum_stock)
 
-      return matchesSearch && matchesProduct && matchesStock;
-    });
-  }, [inventoryRows, search, productFilter, stockFilter]);
+      return matchesSearch && matchesProduct && matchesStock
+    })
+  }, [inventoryRows, search, productFilter, stockFilter])
 
-  const totalTypes = inventoryRows.length;
-
-  const totalUnits = inventoryRows.reduce((total, row) => total + row.stock, 0);
-
+  const totalTypes = inventoryRows.length
+  const totalUnits = inventoryRows.reduce((total, row) => total + row.stock, 0)
   const totalStockValue = inventoryRows.reduce(
     (total, row) => total + row.stockValue,
     0
-  );
+  )
 
   const lowStockCount = inventoryRows.filter(
     (row) => row.stock > 0 && row.stock <= row.productType.minimum_stock
-  ).length;
+  ).length
 
-  const outOfStockCount = inventoryRows.filter((row) => row.stock <= 0).length;
+  const outOfStockCount = inventoryRows.filter((row) => row.stock <= 0).length
 
   const availableCount = inventoryRows.filter(
     (row) => row.stock > row.productType.minimum_stock
-  ).length;
+  ).length
 
   function handleRefresh() {
-    setRefreshing(true);
-    loadInventory();
+    setRefreshing(true)
+    loadInventory()
   }
 
   function openDetails(row: InventoryRow) {
-    setSelectedRow(row);
-    setDetailsOpen(true);
+    setSelectedRow(row)
+    setDetailsOpen(true)
   }
 
   function closeDetails() {
-    setDetailsOpen(false);
-    setSelectedRow(null);
+    setDetailsOpen(false)
+    setSelectedRow(null)
   }
 
   const selectedImageUrl = selectedRow
     ? getPublicImageUrl(selectedRow.productType.image_path)
-    : null;
+    : null
 
   const selectedStatus = selectedRow
-    ? getStockStatus(selectedRow.stock, selectedRow.productType.minimum_stock)
-    : null;
+    ? getStockStatus(
+        selectedRow.stock,
+        selectedRow.productType.minimum_stock,
+        isRw
+      )
+    : null
 
   return (
     <main className="min-h-full space-y-6 bg-slate-50 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
@@ -321,23 +382,23 @@ export default function InventoryPage() {
         {/* Hero */}
         <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-6 text-white shadow-xl sm:p-8">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl" />
-
           <div className="absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Stock Control
+                {tx('Stock Control')}
               </div>
 
               <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-                Inventory
+                {tx('Inventory')}
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                Monitor your kitchenware stock, product types, batches and
-                current inventory value.
+                {tx(
+                  'Monitor your kitchenware stock, product types, batches and current inventory value.'
+                )}
               </p>
             </div>
 
@@ -348,8 +409,7 @@ export default function InventoryPage() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshIcon className={refreshing ? 'animate-spin' : ''} />
-
-              {refreshing ? 'Refreshing...' : 'Refresh Inventory'}
+              {refreshing ? tx('Refreshing...') : tx('Refresh Inventory')}
             </button>
           </div>
         </div>
@@ -360,9 +420,8 @@ export default function InventoryPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-bold">
-                  Inventory could not load completely.
+                  {tx('Inventory could not load completely.')}
                 </p>
-
                 <p className="mt-1 break-words text-xs opacity-80">{error}</p>
               </div>
 
@@ -371,7 +430,7 @@ export default function InventoryPage() {
                 onClick={handleRefresh}
                 className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700"
               >
-                Try Again
+                {tx('Try Again')}
               </button>
             </div>
           </div>
@@ -380,43 +439,47 @@ export default function InventoryPage() {
         {/* Summary */}
         <div className="mt-6">
           <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-            Overview
+            {tx('Overview')}
           </p>
 
           <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
-            Stock at a Glance
+            {tx('Stock at a Glance')}
           </h2>
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
-            title="Product Types"
+            title={tx('Product Types')}
             value={formatNumber(totalTypes)}
-            description="Active types / kinds"
+            description={tx('Active types / kinds')}
             icon={<TypeIcon />}
             accent="indigo"
           />
 
           <SummaryCard
-            title="Units in Stock"
+            title={tx('Units in Stock')}
             value={formatNumber(totalUnits)}
-            description="Across all active batches"
+            description={tx('Across all active batches')}
             icon={<BoxIcon />}
             accent="blue"
           />
 
           <SummaryCard
-            title="Stock Value"
+            title={tx('Stock Value')}
             value={`${formatMoney(totalStockValue)} RWF`}
-            description="Current inventory cost value"
+            description={tx('Current inventory cost value')}
             icon={<MoneyIcon />}
             accent="emerald"
           />
 
           <SummaryCard
-            title="Stock Attention"
+            title={tx('Stock Attention')}
             value={formatNumber(lowStockCount + outOfStockCount)}
-            description={`${lowStockCount} low • ${outOfStockCount} out`}
+            description={
+              isRw
+                ? `${lowStockCount} biri hasi • ${outOfStockCount} byashize`
+                : `${lowStockCount} low • ${outOfStockCount} out`
+            }
             icon={<WarningIcon />}
             accent="amber"
           />
@@ -425,21 +488,21 @@ export default function InventoryPage() {
         {/* Status strip */}
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <StatusStat
-            label="Available"
+            label={tx('Available')}
             value={availableCount}
             icon={<CheckIcon />}
             className="text-emerald-600 dark:text-emerald-400"
           />
 
           <StatusStat
-            label="Low Stock"
+            label={tx('Low Stock')}
             value={lowStockCount}
             icon={<WarningIcon />}
             className="text-amber-600 dark:text-amber-400"
           />
 
           <StatusStat
-            label="Out of Stock"
+            label={tx('Out of Stock')}
             value={outOfStockCount}
             icon={<AlertIcon />}
             className="text-rose-600 dark:text-rose-400"
@@ -450,70 +513,64 @@ export default function InventoryPage() {
         <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex flex-col gap-1">
             <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-              Find Stock
+              {tx('Find Stock')}
             </p>
 
             <h2 className="text-lg font-black text-slate-900 dark:text-white">
-              Search & Filters
+              {tx('Search & Filters')}
             </h2>
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {/* Small text search */}
             <div className="md:col-span-1">
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Search
+              <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {tx('Search')}
               </label>
 
               <div className="relative">
                 <SearchIcon />
-
                 <input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Product, type, or batch..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:bg-slate-950"
+                  placeholder={tx('Product, type, or batch...')}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:bg-slate-950"
                 />
               </div>
             </div>
 
+            {/* Small, searchable and scrollable product filter */}
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Product
+              <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {tx('Product')}
               </label>
 
-              <select
-                value={productFilter}
-                onChange={(event) => setProductFilter(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-              >
-                <option value="all">All Products</option>
-
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableProductSelect
+                products={products}
+                selectedProductId={productFilter}
+                onSelect={(id) => setProductFilter(id)}
+                allLabel={tx('All Products')}
+                searchPlaceholder={tx('Search product...')}
+                noResultsText={tx('No inventory found')}
+              />
             </div>
 
+            {/* Small stock status filter */}
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Stock Status
+              <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {tx('Stock Status')}
               </label>
 
               <select
                 value={stockFilter}
                 onChange={(event) => setStockFilter(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               >
-                <option value="all">All Stock</option>
-
-                <option value="available">Available</option>
-
-                <option value="low">Low Stock</option>
-
-                <option value="out">Out of Stock</option>
+                <option value="all">{tx('All Stock')}</option>
+                <option value="available">{tx('Available')}</option>
+                <option value="low">{tx('Low Stock')}</option>
+                <option value="out">{tx('Out of Stock')}</option>
               </select>
             </div>
           </div>
@@ -521,26 +578,35 @@ export default function InventoryPage() {
           {(search || productFilter !== 'all' || stockFilter !== 'all') && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-slate-400">
-                Active filters:
+                {tx('Active filters:')}
               </span>
 
               {search && (
                 <FilterBadge
-                  label={`Search: ${search}`}
+                  label={`${tx('Search')}: ${search}`}
                   onClear={() => setSearch('')}
                 />
               )}
 
               {productFilter !== 'all' && (
                 <FilterBadge
-                  label="Product filter"
+                  label={`${tx('Product')}: ${
+                    products.find((p) => p.id === productFilter)?.name ||
+                    productFilter
+                  }`}
                   onClear={() => setProductFilter('all')}
                 />
               )}
 
               {stockFilter !== 'all' && (
                 <FilterBadge
-                  label={`Stock: ${stockFilter}`}
+                  label={`${tx('Stock Status')}: ${
+                    stockFilter === 'available'
+                      ? tx('Available')
+                      : stockFilter === 'low'
+                      ? tx('Low Stock')
+                      : tx('Out of Stock')
+                  }`}
                   onClear={() => setStockFilter('all')}
                 />
               )}
@@ -548,62 +614,67 @@ export default function InventoryPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSearch('');
-                  setProductFilter('all');
-                  setStockFilter('all');
+                  setSearch('')
+                  setProductFilter('all')
+                  setStockFilter('all')
                 }}
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
               >
-                Clear all
+                {tx('Clear all')}
               </button>
             </div>
           )}
         </div>
 
-        {/* Table */}
+        {/* Small & Scrollable Table */}
         <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="border-b border-slate-200 px-5 py-5 dark:border-slate-800 sm:px-6">
+          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                  Inventory Records
+                  {tx('Inventory Records')}
                 </p>
 
-                <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
-                  Stock Overview
+                <h2 className="mt-0.5 text-lg font-black text-slate-900 dark:text-white">
+                  {tx('Stock Overview')}
                 </h2>
               </div>
 
-              <p className="text-sm text-slate-400">
-                {filteredRows.length} of {inventoryRows.length} types shown
+              <p className="text-xs text-slate-400">
+                {isRw
+                  ? `${filteredRows.length} kuri ${inventoryRows.length} amoko agaragajwe`
+                  : `${filteredRows.length} of ${inventoryRows.length} types shown`}
               </p>
             </div>
           </div>
 
           {loading ? (
-            <LoadingState />
+            <LoadingState
+              title={tx('Loading inventory...')}
+              subtitle={tx('Reading products, types and batches.')}
+            />
           ) : filteredRows.length === 0 ? (
-            <EmptyState />
+            <EmptyState
+              title={tx('No inventory found')}
+              subtitle={tx(
+                'Try changing your search or stock filters. Active product types will appear here.'
+              )}
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[1100px] w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+            <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
+              <table className="min-w-[1000px] w-full text-left text-xs">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-4 font-bold">Product</th>
-
-                    <th className="px-5 py-4 font-bold">Type / Kind</th>
-
-                    <th className="px-5 py-4 font-bold">Stock</th>
-
-                    <th className="px-5 py-4 font-bold">Minimum</th>
-
-                    <th className="px-5 py-4 font-bold">Stock Value</th>
-
-                    <th className="px-5 py-4 font-bold">Batches</th>
-
-                    <th className="px-5 py-4 font-bold">Status</th>
-
-                    <th className="px-5 py-4 text-right font-bold">Action</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Product_TH')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Type / Kind')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Stock')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Minimum')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Stock Value')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Batches')}</th>
+                    <th className="px-3.5 py-3 font-bold">{tx('Status')}</th>
+                    <th className="px-3.5 py-3 text-right font-bold">
+                      {tx('Action')}
+                    </th>
                   </tr>
                 </thead>
 
@@ -611,51 +682,52 @@ export default function InventoryPage() {
                   {filteredRows.map((row) => {
                     const status = getStockStatus(
                       row.stock,
-                      row.productType.minimum_stock
-                    );
+                      row.productType.minimum_stock,
+                      isRw
+                    )
 
                     const imageUrl = getPublicImageUrl(
                       row.productType.image_path
-                    );
+                    )
 
                     return (
                       <tr
                         key={row.productType.id}
                         className="group transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
                       >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                        <td className="px-3.5 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                               <ProductsIcon />
                             </div>
 
-                            <div>
-                              <p className="font-bold text-slate-900 dark:text-white">
-                                {row.product?.name || 'Unknown product'}
+                            <div className="min-w-0">
+                              <p className="truncate font-bold text-slate-900 dark:text-white">
+                                {row.product?.name || tx('Unknown product')}
                               </p>
 
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                Product
+                              <p className="text-[10px] text-slate-400">
+                                {tx('Product')}
                               </p>
                             </div>
                           </div>
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2.5">
                           <button
                             type="button"
                             onClick={() => openDetails(row)}
-                            className="group/type flex items-center gap-3 text-left"
+                            className="group/type flex items-center gap-2.5 text-left"
                           >
                             {imageUrl ? (
                               <img
                                 src={imageUrl}
                                 alt={row.productType.name}
-                                className="h-12 w-12 rounded-xl border border-slate-200 object-cover shadow-sm transition group-hover/type:scale-105 dark:border-slate-700"
+                                className="h-9 w-9 rounded-lg border border-slate-200 object-cover shadow-sm transition group-hover/type:scale-105 dark:border-slate-700"
                               />
                             ) : (
-                              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition group-hover/type:scale-105 dark:bg-slate-800 dark:text-slate-300">
-                                <ImageIcon />
+                              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-400 transition group-hover/type:scale-105 dark:bg-slate-800 dark:text-slate-300">
+                                <ImageIcon className="h-4 w-4" />
                               </div>
                             )}
 
@@ -665,7 +737,7 @@ export default function InventoryPage() {
                               </p>
 
                               {row.productType.description && (
-                                <p className="mt-0.5 max-w-xs truncate text-xs text-slate-400">
+                                <p className="max-w-[180px] truncate text-[10px] text-slate-400">
                                   {row.productType.description}
                                 </p>
                               )}
@@ -673,57 +745,58 @@ export default function InventoryPage() {
                           </button>
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2.5">
                           <p className="font-black text-slate-900 dark:text-white">
                             {formatNumber(row.stock)}
                           </p>
 
-                          <p className="mt-0.5 text-xs text-slate-400">units</p>
+                          <p className="text-[10px] text-slate-400">
+                            {tx('units')}
+                          </p>
                         </td>
 
-                        <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                        <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300">
                           {formatNumber(
                             toNumber(row.productType.minimum_stock)
                           )}
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2.5">
                           <p className="font-bold text-slate-900 dark:text-white">
                             {formatMoney(row.stockValue)} RWF
                           </p>
                         </td>
 
-                        <td className="px-5 py-4">
-                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            <BatchIcon />
+                        <td className="px-3.5 py-2.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <BatchIcon className="h-3.5 w-3.5" />
                             {row.batches.length}
                           </span>
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2.5">
                           <span
-                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-bold ${status.className}`}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-bold ${status.className}`}
                           >
                             <span
                               className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`}
                             />
-
                             {status.label}
                           </span>
                         </td>
 
-                        <td className="px-5 py-4 text-right">
+                        <td className="px-3.5 py-2.5 text-right">
                           <button
                             type="button"
                             onClick={() => openDetails(row)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-50 px-3.5 py-2.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                            className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
                           >
-                            View
+                            {tx('View')}
                             <ArrowIcon />
                           </button>
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
@@ -735,10 +808,10 @@ export default function InventoryPage() {
         <Modal
           open={detailsOpen}
           onClose={closeDetails}
-          title="Inventory Details"
+          title={tx('Inventory Details')}
           description={
             selectedRow
-              ? `${selectedRow.product?.name || 'Unknown product'} → ${
+              ? `${selectedRow.product?.name || tx('Unknown product')} → ${
                   selectedRow.productType.name
                 }`
               : undefined
@@ -747,9 +820,9 @@ export default function InventoryPage() {
             <button
               type="button"
               onClick={closeDetails}
-              className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              Close
+              {tx('Close')}
             </button>
           }
         >
@@ -774,7 +847,7 @@ export default function InventoryPage() {
                           </div>
 
                           <p className="mt-3 text-xs font-semibold text-slate-400">
-                            No image available
+                            {tx('No image available')}
                           </p>
                         </div>
                       </div>
@@ -785,7 +858,7 @@ export default function InventoryPage() {
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                        Product Type / Kind
+                        {tx('Product Type / Kind')}
                       </span>
 
                       {selectedStatus && (
@@ -795,7 +868,6 @@ export default function InventoryPage() {
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${selectedStatus.dotClass}`}
                           />
-
                           {selectedStatus.label}
                         </span>
                       )}
@@ -806,22 +878,22 @@ export default function InventoryPage() {
                     </h3>
 
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {selectedRow.product?.name || 'Unknown product'}
+                      {selectedRow.product?.name || tx('Unknown product')}
                     </p>
 
                     <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
                       {selectedRow.productType.description ||
-                        'No description has been added for this product type.'}
+                        tx('No description has been added for this product type.')}
                     </p>
 
                     <div className="mt-5 grid grid-cols-2 gap-3">
                       <InfoMetric
-                        label="Current Stock"
+                        label={tx('Current Stock')}
                         value={formatNumber(selectedRow.stock)}
                       />
 
                       <InfoMetric
-                        label="Stock Value"
+                        label={tx('Stock Value')}
                         value={`${formatMoney(selectedRow.stockValue)} RWF`}
                       />
                     </div>
@@ -832,14 +904,14 @@ export default function InventoryPage() {
               {/* Main metrics */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MetricCard
-                  label="Current Stock"
+                  label={tx('Current Stock')}
                   value={formatNumber(selectedRow.stock)}
                   icon={<BoxIcon />}
                   accent="indigo"
                 />
 
                 <MetricCard
-                  label="Minimum Stock"
+                  label={tx('Minimum Stock')}
                   value={formatNumber(
                     toNumber(selectedRow.productType.minimum_stock)
                   )}
@@ -848,7 +920,7 @@ export default function InventoryPage() {
                 />
 
                 <MetricCard
-                  label="Stock Value"
+                  label={tx('Stock Value')}
                   value={`${formatMoney(selectedRow.stockValue)} RWF`}
                   icon={<MoneyIcon />}
                   accent="emerald"
@@ -860,17 +932,24 @@ export default function InventoryPage() {
                 <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                      Batch Breakdown
+                      {tx('Batch Breakdown')}
                     </p>
 
                     <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                      Stock by Batch
+                      {tx('Stock by Batch')}
                     </h3>
                   </div>
 
                   <span className="text-xs text-slate-400">
-                    {selectedRow.batches.length} batch
-                    {selectedRow.batches.length === 1 ? '' : 'es'}
+                    {isRw
+                      ? `${selectedRow.batches.length} ${
+                          selectedRow.batches.length === 1
+                            ? 'itsinda'
+                            : 'amatsinda'
+                        }`
+                      : `${selectedRow.batches.length} batch${
+                          selectedRow.batches.length === 1 ? '' : 'es'
+                        }`}
                   </span>
                 </div>
 
@@ -879,34 +958,42 @@ export default function InventoryPage() {
                     <BatchIcon className="mx-auto h-7 w-7 text-slate-400" />
 
                     <p className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">
-                      No batches found
+                      {tx('No batches found')}
                     </p>
 
                     <p className="mt-1 text-xs text-slate-400">
-                      This product type does not have any batch records yet.
+                      {tx(
+                        'This product type does not have any batch records yet.'
+                      )}
                     </p>
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-[900px] w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                    <div className="max-h-[360px] overflow-x-auto overflow-y-auto">
+                      <table className="min-w-[850px] w-full text-left text-xs">
+                        <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
                           <tr>
-                            <th className="px-4 py-3 font-bold">Batch</th>
-
-                            <th className="px-4 py-3 font-bold">Received</th>
-
-                            <th className="px-4 py-3 font-bold">Original</th>
-
-                            <th className="px-4 py-3 font-bold">Remaining</th>
-
-                            <th className="px-4 py-3 font-bold">Unit Cost</th>
-
-                            <th className="px-4 py-3 font-bold">
-                              Remaining Value
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Batch')}
                             </th>
-
-                            <th className="px-4 py-3 font-bold">Status</th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Received')}
+                            </th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Original')}
+                            </th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Remaining')}
+                            </th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Unit Cost')}
+                            </th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Remaining Value')}
+                            </th>
+                            <th className="px-3.5 py-2.5 font-bold">
+                              {tx('Status')}
+                            </th>
                           </tr>
                         </thead>
 
@@ -915,26 +1002,25 @@ export default function InventoryPage() {
                             const remaining = Math.max(
                               toNumber(batch.remaining_quantity),
                               0
-                            );
+                            )
 
                             const original = Math.max(
                               toNumber(batch.original_quantity),
                               0
-                            );
+                            )
 
-                            const unitCost = toNumber(batch.unit_cost);
-
-                            const batchValue = remaining * unitCost;
+                            const unitCost = toNumber(batch.unit_cost)
+                            const batchValue = remaining * unitCost
 
                             return (
                               <tr
                                 key={batch.id}
                                 className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
                               >
-                                <td className="px-4 py-4">
+                                <td className="px-3.5 py-2.5">
                                   <div className="flex items-center gap-2">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                                      <BatchIcon />
+                                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                                      <BatchIcon className="h-3.5 w-3.5" />
                                     </span>
 
                                     <span className="font-bold text-slate-900 dark:text-white">
@@ -943,33 +1029,33 @@ export default function InventoryPage() {
                                   </div>
                                 </td>
 
-                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
+                                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300">
                                   {formatDate(batch.received_at)}
                                 </td>
 
-                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
+                                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300">
                                   {formatNumber(original)}
                                 </td>
 
-                                <td className="px-4 py-4">
+                                <td className="px-3.5 py-2.5">
                                   <span className="font-black text-slate-900 dark:text-white">
                                     {formatNumber(remaining)}
                                   </span>
                                 </td>
 
-                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
+                                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300">
                                   {formatMoney(unitCost)} RWF
                                 </td>
 
-                                <td className="px-4 py-4">
+                                <td className="px-3.5 py-2.5">
                                   <span className="font-bold text-slate-900 dark:text-white">
                                     {formatMoney(batchValue)} RWF
                                   </span>
                                 </td>
 
-                                <td className="px-4 py-4">
+                                <td className="px-3.5 py-2.5">
                                   <span
-                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold capitalize ${getBatchStatusClass(
+                                    className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold capitalize ${getBatchStatusClass(
                                       batch.status
                                     )}`}
                                   >
@@ -977,7 +1063,7 @@ export default function InventoryPage() {
                                   </span>
                                 </td>
                               </tr>
-                            );
+                            )
                           })}
                         </tbody>
                       </table>
@@ -985,13 +1071,119 @@ export default function InventoryPage() {
                   </div>
                 )}
               </div>
-
-              {/* Image path info intentionally omitted */}
             </div>
           )}
         </Modal>
       </div>
     </main>
+  )
+}
+
+/* ---------------- Small Searchable & Scrollable Product Combobox ---------------- */
+
+function SearchableProductSelect({
+  products,
+  selectedProductId,
+  onSelect,
+  allLabel,
+  searchPlaceholder,
+  noResultsText,
+}: {
+  products: Product[]
+  selectedProductId: string
+  onSelect: (id: string) => void
+  allLabel: string
+  searchPlaceholder: string
+  noResultsText: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return products
+    return products.filter((p) => p.name.toLowerCase().includes(q))
+  }, [products, query])
+
+  const selectedProduct = products.find((p) => p.id === selectedProductId)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+      >
+        <span className="truncate">
+          {selectedProductId === 'all'
+            ? allLabel
+            : selectedProduct?.name || allLabel}
+        </span>
+        <ChevronDownIcon className="ml-2 h-3.5 w-3.5 shrink-0 text-slate-400" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+
+          <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="relative mb-1.5">
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-2.5 pr-2 text-xs outline-none focus:border-indigo-500 focus:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              />
+            </div>
+
+            <div className="max-h-48 overflow-y-auto space-y-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect('all')
+                  setOpen(false)
+                  setQuery('')
+                }}
+                className={`w-full rounded-lg px-2.5 py-1.5 text-left transition ${
+                  selectedProductId === 'all'
+                    ? 'bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
+                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                {allLabel}
+              </button>
+
+              {filteredProducts.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(product.id)
+                    setOpen(false)
+                    setQuery('')
+                  }}
+                  className={`w-full truncate rounded-lg px-2.5 py-1.5 text-left transition ${
+                    selectedProductId === product.id
+                      ? 'bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
+                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {product.name}
+                </button>
+              ))}
+
+              {filteredProducts.length === 0 && (
+                <p className="px-2 py-3 text-center text-xs text-slate-400">
+                  {noResultsText}
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1004,11 +1196,11 @@ function SummaryCard({
   icon,
   accent,
 }: {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ReactNode;
-  accent: 'indigo' | 'blue' | 'emerald' | 'amber';
+  title: string
+  value: string
+  description: string
+  icon: React.ReactNode
+  accent: 'indigo' | 'blue' | 'emerald' | 'amber'
 }) {
   const classes = {
     indigo:
@@ -1018,7 +1210,7 @@ function SummaryCard({
       'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
     amber:
       'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
-  };
+  }
 
   return (
     <div className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-6">
@@ -1042,7 +1234,7 @@ function SummaryCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function StatusStat({
@@ -1051,10 +1243,10 @@ function StatusStat({
   icon,
   className,
 }: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  className: string;
+  label: string
+  value: number
+  icon: React.ReactNode
+  className: string
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -1068,7 +1260,7 @@ function StatusStat({
         </p>
       </div>
     </div>
-  );
+  )
 }
 
 function MetricCard({
@@ -1077,10 +1269,10 @@ function MetricCard({
   icon,
   accent,
 }: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  accent: 'indigo' | 'amber' | 'emerald';
+  label: string
+  value: string
+  icon: React.ReactNode
+  accent: 'indigo' | 'amber' | 'emerald'
 }) {
   const classes = {
     indigo:
@@ -1089,7 +1281,7 @@ function MetricCard({
       'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
     emerald:
       'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
-  };
+  }
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -1105,7 +1297,7 @@ function MetricCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function InfoMetric({ label, value }: { label: string; value: string }) {
@@ -1117,15 +1309,15 @@ function InfoMetric({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
-  );
+  )
 }
 
 function FilterBadge({
   label,
   onClear,
 }: {
-  label: string;
-  onClear: () => void;
+  label: string
+  onClear: () => void
 }) {
   return (
     <button
@@ -1134,49 +1326,57 @@ function FilterBadge({
       className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
     >
       {label}
-
       <span className="text-indigo-400">×</span>
     </button>
-  );
+  )
 }
 
-function LoadingState() {
+function LoadingState({
+  title,
+  subtitle,
+}: {
+  title: string
+  subtitle: string
+}) {
   return (
-    <div className="flex min-h-[340px] items-center justify-center p-8">
+    <div className="flex min-h-[260px] items-center justify-center p-8">
       <div className="text-center">
-        <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
 
         <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-slate-400">
-          Loading inventory...
+          {title}
         </p>
 
-        <p className="mt-1 text-xs text-slate-400">
-          Reading products, types and batches.
-        </p>
+        <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
       </div>
     </div>
-  );
+  )
 }
 
-function EmptyState() {
+function EmptyState({
+  title,
+  subtitle,
+}: {
+  title: string
+  subtitle: string
+}) {
   return (
-    <div className="flex min-h-[340px] items-center justify-center p-8">
+    <div className="flex min-h-[260px] items-center justify-center p-8">
       <div className="text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-          <BoxIcon className="h-8 w-8" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+          <BoxIcon className="h-7 w-7" />
         </div>
 
-        <h3 className="mt-4 text-base font-black text-slate-900 dark:text-white">
-          No inventory found
+        <h3 className="mt-4 text-sm font-black text-slate-900 dark:text-white">
+          {title}
         </h3>
 
-        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-          Try changing your search or stock filters. Active product types will
-          appear here.
+        <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+          {subtitle}
         </p>
       </div>
     </div>
-  );
+  )
 }
 
 /* ---------------- Icons ---------------- */
@@ -1185,8 +1385,8 @@ function Icon({
   children,
   className = '',
 }: {
-  children: React.ReactNode;
-  className?: string;
+  children: React.ReactNode
+  className?: string
 }) {
   return (
     <svg
@@ -1201,7 +1401,24 @@ function Icon({
     >
       {children}
     </svg>
-  );
+  )
+}
+
+function ChevronDownIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
 }
 
 function RefreshIcon({ className = '' }: { className?: string }) {
@@ -1212,7 +1429,7 @@ function RefreshIcon({ className = '' }: { className?: string }) {
       <path d="M4 13a8 8 0 0 0 14 5l2-2" />
       <path d="M20 20v-4h-4" />
     </Icon>
-  );
+  )
 }
 
 function SearchIcon() {
@@ -1224,22 +1441,22 @@ function SearchIcon() {
       strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-4-4" />
     </svg>
-  );
+  )
 }
 
 function ArrowIcon() {
   return (
-    <Icon className="h-4 w-4">
+    <Icon className="h-3.5 w-3.5">
       <path d="M5 12h14" />
       <path d="m13 6 6 6-6 6" />
     </Icon>
-  );
+  )
 }
 
 function BoxIcon({ className = '' }: { className?: string }) {
@@ -1249,7 +1466,7 @@ function BoxIcon({ className = '' }: { className?: string }) {
       <path d="m4 7.5 8 4.5 8-4.5" />
       <path d="M12 12v9" />
     </Icon>
-  );
+  )
 }
 
 function TypeIcon() {
@@ -1260,17 +1477,17 @@ function TypeIcon() {
       <rect x="4" y="14" width="6" height="6" rx="1" />
       <rect x="14" y="14" width="6" height="6" rx="1" />
     </Icon>
-  );
+  )
 }
 
 function ProductsIcon() {
   return (
-    <Icon>
+    <Icon className="h-4 w-4">
       <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
       <path d="m4 7.5 8 4.5 8-4.5" />
       <path d="M12 12v9" />
     </Icon>
-  );
+  )
 }
 
 function MoneyIcon() {
@@ -1280,7 +1497,7 @@ function MoneyIcon() {
       <path d="M7 9h.01M17 15h.01" />
       <circle cx="12" cy="12" r="2.5" />
     </Icon>
-  );
+  )
 }
 
 function WarningIcon() {
@@ -1289,7 +1506,7 @@ function WarningIcon() {
       <path d="m12 3 9 17H3z" />
       <path d="M12 9v5M12 17v.01" />
     </Icon>
-  );
+  )
 }
 
 function AlertIcon() {
@@ -1298,7 +1515,7 @@ function AlertIcon() {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v5M12 16v.01" />
     </Icon>
-  );
+  )
 }
 
 function CheckIcon() {
@@ -1307,7 +1524,7 @@ function CheckIcon() {
       <circle cx="12" cy="12" r="9" />
       <path d="m8 12 2.5 2.5L16 9" />
     </Icon>
-  );
+  )
 }
 
 function BatchIcon({ className = '' }: { className?: string }) {
@@ -1316,7 +1533,7 @@ function BatchIcon({ className = '' }: { className?: string }) {
       <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
       <path d="M12 12 4 7.5M12 12l8-4.5M12 12v9" />
     </Icon>
-  );
+  )
 }
 
 function ImageIcon({ className = '' }: { className?: string }) {
@@ -1326,7 +1543,7 @@ function ImageIcon({ className = '' }: { className?: string }) {
       <circle cx="8.5" cy="9" r="1.5" />
       <path d="m4 17 5-5 3 3 2-2 6 5" />
     </Icon>
-  );
+  )
 }
 
 function TargetIcon() {
@@ -1336,5 +1553,5 @@ function TargetIcon() {
       <circle cx="12" cy="12" r="4" />
       <circle cx="12" cy="12" r="1" />
     </Icon>
-  );
+  )
 }
